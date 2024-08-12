@@ -14,7 +14,6 @@ export class PostgreSQLAdapter extends PersistenceAdapter {
         super();
         this.url = url;
         this.client = this.connect();
-        this.setup();
         this.weatherRepository = new WeatherRepository(this.client);
     }
 
@@ -27,7 +26,8 @@ export class PostgreSQLAdapter extends PersistenceAdapter {
         });
     }
 
-    async setup() {
+    // Una vez creada la instancia de la clase se debe llamar a este metodo.
+    public async setup() {
         try {
             await this.client.initialize();
             console.log('PostgreSQL connected');

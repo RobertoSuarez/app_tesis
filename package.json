@@ -6,6 +6,7 @@
     "build": "tsc",
     "api": "node dist/application/api/index.js",
     "api:dev": "nodemon",
+    "script-hello-world": "ts-node src/application/scripts/helloworld.ts",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
