@@ -1,6 +1,6 @@
 import { Domain } from '../../../../domain';
 import express from 'express';
-import { WeatherRouter } from './weatherRouter';
+import { PlatformsRouter } from './platforms.router';
 
 
 export class Routes {
@@ -8,10 +8,10 @@ export class Routes {
     constructor(app: express.Express, domain: Domain) {
         const router = express.Router();
         
-        // Generamos rutas asociadas a los casos de usos.
-        const weatherRoutes = new WeatherRouter(domain.port.WeatherUseCase);
+        // Generamos rutas asociadas a los servicios.
+        const platformsRouter = new PlatformsRouter(domain.providersServices.platformsService);
         
-        router.use('/weather', weatherRoutes.router);
+        router.use('/platforms', platformsRouter.router);
 
         app.use(router);
     }

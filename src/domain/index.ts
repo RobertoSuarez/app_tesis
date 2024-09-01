@@ -1,18 +1,27 @@
-import { PersistenceAdapter } from "../infrastructure/adapter";
-import { WeatherUseCase } from "./Weather/weather.usecase";
+import { PersistenceAdapterI } from "../infrastructure/persistence/adapter";
+import { ScrapingAdapterI } from "../infrastructure/scraping/adapter";
+import { SearchAdapterI } from "../infrastructure/search/adapter";
+import { JobsServiceI } from "./ports/jobs.port";
+import { PlatformsServiceI } from "./ports/platforms.port";
+import { JobsService } from "./services/jobs.service";
+import { PlatformsService } from './services/platforms.service';
 
 
-interface Port {
-    WeatherUseCase: WeatherUseCase
+interface ProviderServices {
+    platformsService: PlatformsServiceI
+    jobsServiceI: JobsServiceI
 }
 
 export class Domain {
     
-    public port: Port
+    public providersServices: ProviderServices;
+    
 
-    constructor(persistenceAdapter: PersistenceAdapter) {
-        this.port = {
-            WeatherUseCase: new WeatherUseCase(persistenceAdapter.weatherRepository)
+    constructor(persistenceAdapter: PersistenceAdapterI, scrapingAdapter: ScrapingAdapterI, searchAdapter: SearchAdapterI) {
+
+        this.providersServices = {
+            platformsService: new PlatformsService(persistenceAdapter.platformsRepository),
+            jobsServiceI: new JobsService(persistenceAdapter.jobsRepository, scrapingAdapter.linkedinScraping, scrapingAdapter.compuTrabajoScraping)
         }
     }
 }
