@@ -9,4 +9,7 @@ export class Search extends TableBase {
     @Column()
     query: string;
 
+    @Column({ default: false })
+    sought: boolean;
+
 }

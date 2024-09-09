@@ -8,6 +8,8 @@ import { Platforms } from '../../../domain/models/platforms.entity';
 import { Search } from '../../../domain/models/search.entity';
 import { JobsRepositoryI } from '../../../domain/ports/jobs.port';
 import { JobsRepository } from './repository/jobs.imp';
+import { SearchRepositoryI } from '../../../domain/ports/search.port';
+import { SearchRepository } from './repository/searchh.imp';
 
 
 export class PostgreSQLAdapter implements PersistenceAdapterI {
@@ -16,12 +18,14 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
     url: string;
     platformsRepository: PlatformsRepositoryI;
     jobsRepository: JobsRepositoryI;
+    searchRepository: SearchRepositoryI;
 
     constructor(url: string) {
         this.url = url;
         this.client = this.connect();
         this.platformsRepository = new PlatformsRepository(this.client);
         this.jobsRepository = new JobsRepository(this.client);
+        this.searchRepository = new SearchRepository(this.client);
     }
     
 

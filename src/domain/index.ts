@@ -21,7 +21,13 @@ export class Domain {
 
         this.providersServices = {
             platformsService: new PlatformsService(persistenceAdapter.platformsRepository),
-            jobsServiceI: new JobsService(persistenceAdapter.jobsRepository, scrapingAdapter.linkedinScraping, scrapingAdapter.compuTrabajoScraping)
+            jobsServiceI: new JobsService(
+                persistenceAdapter.jobsRepository, 
+                persistenceAdapter.searchRepository,
+                scrapingAdapter.linkedinScraping, 
+                scrapingAdapter.compuTrabajoScraping,
+                scrapingAdapter.multitrabajoScraping,
+            )
         }
     }
 }

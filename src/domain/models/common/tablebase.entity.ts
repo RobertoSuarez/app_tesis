@@ -1,9 +1,9 @@
-import { CreateDateColumn, DeleteDateColumn, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
+import { CreateDateColumn, DeleteDateColumn, PrimaryColumn, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm";
 
 
 export class TableBase {
 
-    @PrimaryGeneratedColumn('uuid')
+    @PrimaryColumn({ default: () => 'gen_random_uuid()' })
     uid: string;
 
     @CreateDateColumn({ name: 'created_at' })
