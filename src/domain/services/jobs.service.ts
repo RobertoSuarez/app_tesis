@@ -1,13 +1,13 @@
 import axios from "axios";
 import url from 'url';
-import { CompuTrabajoScrapingI, JobsRepositoryI, JobsServiceI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
+import { CompuTrabajoScrapingI, JobsRepositoryI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
 import { SearchRepositoryI } from "../ports/search.port";
 import { Jobs } from "../models/jobs.entity";
 import { config } from "../../shared/config/config";
 
 
 
-export class JobsService implements JobsServiceI {
+export class JobsService {
 
 
     constructor(
@@ -24,6 +24,16 @@ export class JobsService implements JobsServiceI {
     async test(query: string): Promise<void> {
         const job = await this._multitrabajosScraping.getJob(query);
         console.log(job);
+    }
+
+    async getUrl(query: string): Promise<string[]> {
+        const urls = await this._compuTrabajoScraping.getURLs(query);
+        return urls;
+    }
+
+    async getUrlComputrabajo(query: string): Promise<string[]> {
+        const urls = await this._compuTrabajoScraping.getURLs(query);
+        return urls;
     }
 
  
@@ -43,28 +53,31 @@ export class JobsService implements JobsServiceI {
             const currentSearch = lastSearch[index];
 
             try {
-                const params = {
-                    key: keyGoogle,
-                    cx: searchEngineId,
-                    q: encodeURIComponent(currentSearch.query),
-                    num: 10,
-                }
-                const url = `https://www.googleapis.com/customsearch/v1`;
+                // const params = {
+                //     key: keyGoogle,
+                //     cx: searchEngineId,
+                //     q: encodeURIComponent(currentSearch.query),
+                //     num: 10,
+                // }
+                // const url = `https://www.googleapis.com/customsearch/v1`;
 
+                // Registramos que paso por el proceso de busqueda.
                 await this._searchRepository.sought(currentSearch.uid);
 
 
-                const response = await axios.get(url, { params });
+                // const response = await axios.get(url, { params });
                 
-                const items = response.data.items;
-                if (!items) {
-                    continue;
-                }
-                let urls = items.map((item: any) => item.link)
-                console.log(urls);
+                // const items = response.data.items;
+                // if (!items) {
+                //     continue;
+                // }
+                // let urls = items.map((item: any) => item.link)
+                // console.log(urls);
 
                 // TODO: Quitar eso, se coloca esto solo por testeo
                 // urls = [];
+
+                const urls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
 
                 for (let indexUrl = 0; indexUrl < urls.length; indexUrl++) {
 
