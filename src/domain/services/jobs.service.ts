@@ -54,7 +54,8 @@ export class JobsService {
             const multitrabajosUrls = await this._multitrabajosScraping.searchJobs(currentSearch.query);
             const urls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
 
-            urls.concat(multitrabajosUrls);
+            urls.push(...multitrabajosUrls);
+            console.log(urls);
 
             try {
                 // const params = {
@@ -87,6 +88,7 @@ export class JobsService {
 
                     try {
                         const url = urls[indexUrl];
+                        console.log(url);
                         const ok = await this._jobsRepository.scraped(url);
                         if (ok) {
                             continue;
