@@ -29,7 +29,6 @@ export class LinkedinScraping implements LinkedinScrapingI {
         });
 
         const [jobs] = await jobsScroller.scrollNext();
-        console.log(jobs);
 
         return [];
     }

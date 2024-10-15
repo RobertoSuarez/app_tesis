@@ -23,7 +23,6 @@ export class JobsService {
 
     async test(query: string): Promise<void> {
         const job = await this._multitrabajosScraping.getJob(query);
-        console.log(job);
     }
 
     async getUrl(query: string): Promise<string[]> {
@@ -55,9 +54,7 @@ export class JobsService {
             const multitrabajosUrls = await this._multitrabajosScraping.searchJobs(currentSearch.query);
             const urls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
 
-            urls.push(...multitrabajosUrls);
-
-            console.log('urls completas: ', urls);
+            urls.concat(multitrabajosUrls);
 
             try {
                 // const params = {
@@ -89,7 +86,7 @@ export class JobsService {
                 for (let indexUrl = 0; indexUrl < urls.length; indexUrl++) {
 
                     try {
-                        const url = multitrabajosUrls[indexUrl];
+                        const url = urls[indexUrl];
                         const ok = await this._jobsRepository.scraped(url);
                         if (ok) {
                             continue;
@@ -107,7 +104,6 @@ export class JobsService {
                             default:
                                 continue;
                         }
-
                         
                         await this._jobsRepository.registerJob(job);
                     } catch (err) {
@@ -126,25 +122,6 @@ export class JobsService {
                 throw err;
             }
         }
-
-        // const jobsUrls = [
-        //     'https://ec.computrabajo.com/trabajo-de-node-js#5E3ADD5E2298344D61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-angular#B75D475F93C3D0E961373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-angular#05B979F106404D1461373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-angular#73F200BCC3CE605C61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-react#73F200BCC3CE605C61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-react#6AEE0BD7F28E783261373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-java#CFDEEF1E63DCED6C61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-python#3E232E59B5C9B88F61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-python#E1827A877957D09A61373E686DCF3405',
-        //     'https://ec.computrabajo.com/trabajo-de-ruby#7E95DC4C54AE5E4561373E686DCF3405'
-        // ];
-
-        // for (let i = 0; i < jobsUrls.length; i++) {
-        //     const job = await this._compuTrabajoScraping.getJob(jobsUrls[i]);
-        //     await this._jobsRepository.registerJob(job);
-        // }
-        
         return;
     }
 

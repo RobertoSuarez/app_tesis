@@ -17,7 +17,6 @@ export class PlatformsRepository implements PlatformsRepositoryI {
             const platform = new Platforms();
             platform.name = createPlatform.name;
             platform.url = createPlatform.url;
-            console.log(platform)
             return await this.repository.save(platform);
         } catch(err) {
             if (err.code === '23505') {

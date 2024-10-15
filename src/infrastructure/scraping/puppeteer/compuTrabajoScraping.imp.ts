@@ -90,8 +90,6 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
     
             })
 
-            console.log(data);
-
             if (!data) {
                 throw new Error('Data not found');
             }
