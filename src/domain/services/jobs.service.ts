@@ -1,13 +1,13 @@
 import axios from "axios";
 import url from 'url';
-import { CompuTrabajoScrapingI, JobsRepositoryI, JobsServiceI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
+import { CompuTrabajoScrapingI, JobsRepositoryI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
 import { SearchRepositoryI } from "../ports/search.port";
 import { Jobs } from "../models/jobs.entity";
 import { config } from "../../shared/config/config";
 
 
 
-export class JobsService implements JobsServiceI {
+export class JobsService {
 
 
     constructor(
@@ -24,6 +24,16 @@ export class JobsService implements JobsServiceI {
     async test(query: string): Promise<void> {
         const job = await this._multitrabajosScraping.getJob(query);
         console.log(job);
+    }
+
+    async getUrl(query: string): Promise<string[]> {
+        const urls = await this._compuTrabajoScraping.getURLs(query);
+        return urls;
+    }
+
+    async getUrlComputrabajo(query: string): Promise<string[]> {
+        const urls = await this._compuTrabajoScraping.getURLs(query);
+        return urls;
     }
 
  
@@ -43,8 +53,11 @@ export class JobsService implements JobsServiceI {
             const currentSearch = lastSearch[index];
 
             const multitrabajosUrls = await this._multitrabajosScraping.searchJobs(currentSearch.query);
+            const urls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
 
-            console.log('multitrabajosUrls', multitrabajosUrls);
+            urls.push(...multitrabajosUrls);
+
+            console.log('urls completas: ', urls);
 
             try {
                 // const params = {
@@ -71,7 +84,9 @@ export class JobsService implements JobsServiceI {
                 // TODO: Quitar eso, se coloca esto solo por testeo
                 // urls = [];
 
-                for (let indexUrl = 0; indexUrl < multitrabajosUrls.length; indexUrl++) {
+                
+
+                for (let indexUrl = 0; indexUrl < urls.length; indexUrl++) {
 
                     try {
                         const url = multitrabajosUrls[indexUrl];

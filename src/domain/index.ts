@@ -1,7 +1,6 @@
 import { PersistenceAdapterI } from "../infrastructure/persistence/adapter";
 import { ScrapingAdapterI } from "../infrastructure/scraping/adapter";
 import { SearchAdapterI } from "../infrastructure/search/adapter";
-import { JobsServiceI } from "./ports/jobs.port";
 import { PlatformsServiceI } from "./ports/platforms.port";
 import { JobsService } from "./services/jobs.service";
 import { PlatformsService } from './services/platforms.service';
@@ -9,7 +8,7 @@ import { PlatformsService } from './services/platforms.service';
 
 interface ProviderServices {
     platformsService: PlatformsServiceI
-    jobsServiceI: JobsServiceI
+    jobsService: JobsService
 }
 
 export class Domain {
@@ -21,7 +20,7 @@ export class Domain {
 
         this.providersServices = {
             platformsService: new PlatformsService(persistenceAdapter.platformsRepository),
-            jobsServiceI: new JobsService(
+            jobsService: new JobsService(
                 persistenceAdapter.jobsRepository, 
                 persistenceAdapter.searchRepository,
                 scrapingAdapter.linkedinScraping, 

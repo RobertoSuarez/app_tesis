@@ -12,6 +12,7 @@ export interface LinkedinScrapingI {
 
 export interface CompuTrabajoScrapingI {
     getJob(url: string): Promise<Jobs>
+    getURLs(search: string): Promise<string[]>
 }
 
 export interface MultitrabajosScrapingI {
@@ -21,9 +22,4 @@ export interface MultitrabajosScrapingI {
 
 export interface SearchEngineI {
     
-}
-
-export interface JobsServiceI {
-    webScrapingJobs(amountScraping: number): Promise<void> 
-    test(query: string): Promise<void>
 }

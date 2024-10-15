@@ -1,7 +1,7 @@
 import OpenAI from "openai";
 import { z } from "zod";
 import { zodResponseFormat } from "openai/helpers/zod";
-import { Browser } from "puppeteer";
+import { Browser, Page } from "puppeteer";
 import { Jobs } from '../../../domain/models/jobs.entity';
 import { CompuTrabajoScrapingI } from "../../../domain/ports/jobs.port";
 import { Platforms } from "../../../domain/models/platforms.entity";
@@ -16,25 +16,61 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
     ) {
     }
 
+    // getURLs recupera todas las urls de las ofertas que aparecen en la búsqueda.
+    async getURLs(search: string): Promise<string[]> {        
+        let page: Page = null; 
+        try {
+            page = await this._browser.newPage();
+            const url = `https://ec.computrabajo.com/trabajo-de-${search.replace(/\s+/g, '-')}`;
+            await page.goto(url, { waitUntil: 'networkidle0' });
+
+            const data = await page.evaluate(() => {
+                let urls = [];
+                // Recuperamos todos los elementos a de las ofertas de empleo.
+                const listaOfertas = document.querySelectorAll('#offersGridOfferContainer a.js-o-link') as NodeListOf<HTMLAnchorElement>;
+                // iteramos para sacar la ruta
+                for (let i = 0; i < listaOfertas.length; i++) {
+                    const url = listaOfertas[i].href;
+                    urls.push(url);
+                }
+                return urls;
+
+            });
+            return Promise.resolve(data as string[]);
+        } catch (err) {
+            console.error(err);
+        } finally {
+            await page.close();
+        }
+    }
+
     async getJob(url: string): Promise<Jobs> {
         let job = new Jobs();
 
+        let page: Page;
+
         try {
             
-            const page = await this._browser.newPage();
+            page = await this._browser.newPage();
+            page.setViewport({
+                height: 1080,
+                width: 1920
+            })
     
             await page.goto(url, {waitUntil: 'networkidle0'});
     
             const data = await page.evaluate(() => {
 
                 try {
-                    const title = document.querySelector('.box_detail .title_offer').textContent.trim()
+                    const title = document.querySelector('.box_detail').textContent.trim()
                     const company = document.querySelector('.box_detail a').textContent.trim()
-                    const location = document.querySelector('.box_detail .header_detail div .mb5').textContent.trim()
-                    const details = document.querySelectorAll('.box_detail .fs14.mb10 .dFlex.mb10')
-                    const workType = details[2].textContent.trim()
-                    const workScheduleType = details[1].textContent.trim()
-                    const description = document.querySelectorAll('.box_detail .fs16')[4].textContent.trim();
+                    const location = document.querySelector('.detail_fs .container p').textContent.trim()
+                    const description = document.querySelector('.box_detail [div-link="oferta"]').textContent.trim();
+                    const tags = document.querySelectorAll('.tag.base.mb10')
+                    const workType = tags[1].textContent.trim();
+                    const workScheduleType = tags[2].textContent.trim();
+                    // const workScheduleType = details[1].textContent.trim()
+                    // const description = document.querySelectorAll('.box_detail .fs16')[4].textContent.trim();
         
         
                     return {
@@ -54,6 +90,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
     
             })
 
+            console.log(data);
+
             if (!data) {
                 throw new Error('Data not found');
             }
@@ -71,13 +109,14 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
             job.platform = platform;
     
             job = await this.completeJobWithAI(job);
-    
-            await page.close();
         } catch (error) {
             
             console.log(error);
             throw error;
+        } finally {
+            await page.close();
         }
+        
 
         return job;
     }
@@ -89,6 +128,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
             attitudes: z.array(z.string()),
             salaryRange: z.string(),
             disabilityInclusion: z.boolean(),
+            location: z.string(),
+            company: z.string(),
         })
 
         const completion = await this._openai.beta.chat.completions.parse({
@@ -97,11 +138,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
                 { role: 'system', content: 'Extraer información de la oferta de empleo. Las respuesta siempre damela en español' },
                 { role: 'user', content: `
                     I have the following job offer:
+                    Empresa y localización: ${job.Location}
                     Job title: ${job.title}
-                    Company: ${job.Company}
-                    Location: ${job.Location}
-                    Work type: ${job.workType}
-                    Work schedule type: ${job.workScheduleType}
                     Description: ${job.description}
                     `},
             ],
@@ -112,8 +150,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
         job.attitudes = details.attitudes;
         job.salaryRange = details.salaryRange;
         job.disabilityInclusion = details.disabilityInclusion;
-        console.log(details);
-        console.log(job);
+        job.Location = details.location;
+        job.Company = details.company;
 
         return job;
     }
