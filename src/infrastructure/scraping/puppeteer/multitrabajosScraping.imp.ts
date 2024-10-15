@@ -15,12 +15,53 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         private _openai: OpenAI
     ) {}
 
+    async searchJobs(query: string): Promise<string[]> {
+
+        const page = await this._browser.newPage();
+        await page.setViewport({
+            width: 1280,
+            height: 720,
+        })
+        const url = `https://www.multitrabajos.com/empleos-busqueda-${query.trim().replace(/\s+/g, '-')}.html`
+        await page.goto(url, { waitUntil: 'networkidle0' });
+
+        let links = await page.evaluate(() => {
+            const lista = document.querySelector('#listado-avisos').children;
+            if (document.querySelector('#listado-avisos').innerHTML.includes('No encontramos')) {
+                return null;
+            }
+            const result = [];
+            for (let index = 0; index < lista.length; index++) {
+                const element = lista[index];
+                const href = element.querySelector('a').getAttribute('href');
+                result.push(href);
+            }
+            return result;
+        })
+
+        await page.close();
+
+        if (!links) {
+            return [];
+        }
+
+        links = links.slice(0, -1).slice(0, 10);
+        links = links.map(link => `https://www.multitrabajos.com${link}`);
+        links = links.filter(url => /https:\/\/www\.multitrabajos\.com\/empleos\/.+-\d+\.html/.test(url))
+        
+        return links;
+    }
+
 
 
     async getJob(url: string): Promise<Jobs> {
         let job = new Jobs();
 
         const page = await this._browser.newPage();
+        await page.setViewport({
+            width: 1280,
+            height: 720,
+        })
 
         await page.goto(url, { waitUntil: 'networkidle0' });
 
@@ -35,6 +76,7 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
                 const workType = document.querySelectorAll('#ficha-detalle h2')[2].textContent.trim();
                 const workScheduleType = document.querySelectorAll('#ficha-detalle h2')[4].textContent.trim();
                 const description = document.querySelector('#ficha-detalle').textContent;
+                const details = document.querySelector('#header-component').textContent;
 
                 return {
                     title,
@@ -42,7 +84,8 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
                     location,
                     workType,
                     workScheduleType,
-                    description
+                    description,
+                    details,
                 }
 
             } catch (error) {
@@ -58,6 +101,9 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
             }
         });
 
+        // Cerramos la pagina
+        await page.close();
+
         job.title = data.title;
         job.Company = data.company;
         job.Location = data.location;
@@ -72,19 +118,19 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
 
         job.platform = platform;
 
-        job = await this.completeJobWithAI(job);
-        console.log(job);
+        job = await this.completeJobWithAI(job, data.details);
 
         return job;
     }
 
-    async completeJobWithAI(job: Jobs): Promise<Jobs> {
+    async completeJobWithAI(job: Jobs, detailsExtras: string): Promise<Jobs> {
         const datos = z.object({
             levelExperience: z.string(),
             description: z.string(),
             attitudes: z.array(z.string()),
             salaryRange: z.string(),
             disabilityInclusion: z.boolean(),
+            company: z.string(),
         })
 
         const completion = await this._openai.beta.chat.completions.parse({
@@ -94,11 +140,11 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
                 { role: 'user', content: `
                     I have the following job offer:
                     Job title: ${job.title}
-                    Company: ${job.Company}
                     Location: ${job.Location}
                     Work type: ${job.workType}
                     Work schedule type: ${job.workScheduleType}
-                    Description: ${job.description}
+                    Description: ${job.description},
+                    Datos extras: ${detailsExtras}
                     `},
             ],
             response_format: zodResponseFormat(datos, 'details')
@@ -109,8 +155,7 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         job.salaryRange = details.salaryRange;
         job.disabilityInclusion = details.disabilityInclusion;
         job.description = details.description;
-        console.log(details);
-        console.log(job);
+        job.Company = details.company;
 
         return job;
     }

@@ -21,14 +21,19 @@ export class ScrapingAdapter implements ScrapingAdapterI {
 
     async setupBrowser() {
 
+        let path = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+        if (process.platform === 'linux') {
+            path = '/usr/bin/chromium-browser';
+        }
+
         const openai = new OpenAI({
             apiKey: config.OPENAI_API_KEY,
         });
 
         this.browser = await launch({
             headless: false,
-            executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            executablePath: path,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,720'],
             timeout: 0,
         });
 

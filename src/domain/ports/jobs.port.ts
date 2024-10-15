@@ -16,6 +16,7 @@ export interface CompuTrabajoScrapingI {
 
 export interface MultitrabajosScrapingI {
     getJob(url: string): Promise<Jobs>
+    searchJobs(query: string): Promise<string[]> 
 }
 
 export interface SearchEngineI {

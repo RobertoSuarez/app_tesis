@@ -42,48 +42,52 @@ export class JobsService implements JobsServiceI {
             // TODO: Extraer 10 urls de la búsqueda
             const currentSearch = lastSearch[index];
 
-            try {
-                const params = {
-                    key: keyGoogle,
-                    cx: searchEngineId,
-                    q: encodeURIComponent(currentSearch.query),
-                    num: 10,
-                }
-                const url = `https://www.googleapis.com/customsearch/v1`;
+            const multitrabajosUrls = await this._multitrabajosScraping.searchJobs(currentSearch.query);
 
+            console.log('multitrabajosUrls', multitrabajosUrls);
+
+            try {
+                // const params = {
+                //     key: keyGoogle,
+                //     cx: searchEngineId,
+                //     q: encodeURIComponent(currentSearch.query),
+                //     num: 10,
+                // }
+                // const url = `https://www.googleapis.com/customsearch/v1`;
+
+                // Aplicamos que ya se ha buscado el termino
                 await this._searchRepository.sought(currentSearch.uid);
 
 
-                const response = await axios.get(url, { params });
+                // const response = await axios.get(url, { params });
                 
-                const items = response.data.items;
-                if (!items) {
-                    continue;
-                }
-                let urls = items.map((item: any) => item.link)
-                console.log(urls);
+                // const items = response.data.items;
+                // if (!items) {
+                //     continue;
+                // }
+                // let urls = items.map((item: any) => item.link)
+                // console.log(urls);
 
                 // TODO: Quitar eso, se coloca esto solo por testeo
                 // urls = [];
 
-                for (let indexUrl = 0; indexUrl < urls.length; indexUrl++) {
+                for (let indexUrl = 0; indexUrl < multitrabajosUrls.length; indexUrl++) {
 
                     try {
-                        // TODO: Diferenciar las urls entre las diferentes plataformas.
-                        const ok = await this._jobsRepository.scraped(urls[indexUrl]);
-                        console.log('ok', ok)
+                        const url = multitrabajosUrls[indexUrl];
+                        const ok = await this._jobsRepository.scraped(url);
                         if (ok) {
                             continue;
                         }
 
                         let job: Jobs = null;
-                        const platform = this.getPlatform(urls[indexUrl]);
+                        const platform = this.getPlatform(url);
                         switch (platform) {
                             case 'multitrabajos':
-                                job = await this._multitrabajosScraping.getJob(urls[indexUrl]);
+                                job = await this._multitrabajosScraping.getJob(url);
                                 break;
                             case 'computrabajo':
-                                job = await this._compuTrabajoScraping.getJob(urls[indexUrl]);
+                                job = await this._compuTrabajoScraping.getJob(url);
                                 break;
                             default:
                                 continue;
