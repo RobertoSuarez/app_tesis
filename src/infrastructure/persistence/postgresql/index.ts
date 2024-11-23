@@ -18,6 +18,7 @@ import { Province } from '../../../domain/models/province.entity';
 import { JobHistory } from '../../../domain/models/jobHistory.entity';
 import { Languages } from '../../../domain/models/languages.entity';
 import { JobLikes } from '../../../domain/models/jobLikes.entity';
+import { IdentificationType } from '../../../domain/models/identificationType.entity';
 
 
 export class PostgreSQLAdapter implements PersistenceAdapterI {
@@ -25,7 +26,7 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
     client: DataSource;
     url: string;
     platformsRepository: PlatformsRepositoryI;
-    jobsRepository: JobsRepositoryI;
+    jobsRepository: JobsRepository;
     searchRepository: SearchRepositoryI;
 
     constructor(url: string) {
@@ -54,7 +55,8 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
                 User, 
                 JobHistory, 
                 Languages, 
-                JobLikes
+                JobLikes,
+                IdentificationType,
             ],
         });
     }

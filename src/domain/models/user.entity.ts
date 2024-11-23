@@ -6,11 +6,16 @@ import { JobHistory } from "./jobHistory.entity";
 import { Languages } from "./languages.entity";
 import { Search } from "./search.entity";
 import { JobLikes } from "./jobLikes.entity";
+import { IdentificationType } from "./identificationType.entity";
 
 
 
 @Entity()
 export class User extends TableBase {
+
+
+    @ManyToOne(() => IdentificationType, (it) => it.users)
+    identificationType: IdentificationType;
 
     @Column()
     identification: string;

@@ -1,23 +1,25 @@
-import axios from "axios";
-import url from 'url';
 import { CompuTrabajoScrapingI, JobsRepositoryI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
 import { SearchRepositoryI } from "../ports/search.port";
 import { Jobs } from "../models/jobs.entity";
 import { config } from "../../shared/config/config";
+import { Repository } from "typeorm";
+import { JobsRepository } from "../../infrastructure/persistence/postgresql/repository/jobs.imp";
 
 
 
 export class JobsService {
 
+    private jobsRepositoryORM: Repository<Jobs>;
 
     constructor(
-        private _jobsRepository: JobsRepositoryI, 
+        private _jobsRepository: JobsRepository, 
         private _searchRepository: SearchRepositoryI,
         private _linkedinScraping: LinkedinScrapingI, 
         private _compuTrabajoScraping: CompuTrabajoScrapingI,
         private _multitrabajosScraping: MultitrabajosScrapingI,
     ) 
     {
+        this.jobsRepositoryORM = this._jobsRepository.repositoryJobs;
     }
 
 
@@ -141,6 +143,14 @@ export class JobsService {
         }
 
         return null;
+    }
+
+    async getJobs(userId: string, search: string) {
+
+        const result = await this.jobsRepositoryORM.find({ take: 5 });
+
+        return result;
+
     }
 
 

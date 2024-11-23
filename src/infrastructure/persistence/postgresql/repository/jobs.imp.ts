@@ -5,7 +5,7 @@ import { Jobs } from "../../../../domain/models/jobs.entity";
 
 export class JobsRepository implements JobsRepositoryI {
 
-    repositoryJobs: Repository<Jobs>
+    public repositoryJobs: Repository<Jobs>
 
     constructor(private _client: DataSource) {
         this.repositoryJobs = this._client.getRepository(Jobs);
