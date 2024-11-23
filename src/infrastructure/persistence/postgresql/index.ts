@@ -10,6 +10,14 @@ import { JobsRepositoryI } from '../../../domain/ports/jobs.port';
 import { JobsRepository } from './repository/jobs.imp';
 import { SearchRepositoryI } from '../../../domain/ports/search.port';
 import { SearchRepository } from './repository/searchh.imp';
+import { User } from '../../../domain/models/user.entity';
+import { City } from '../../../domain/models/city.entity';
+import { Education } from '../../../domain/models/eductaion.entity';
+import { Industry } from '../../../domain/models/industry.entity';
+import { Province } from '../../../domain/models/province.entity';
+import { JobHistory } from '../../../domain/models/jobHistory.entity';
+import { Languages } from '../../../domain/models/languages.entity';
+import { JobLikes } from '../../../domain/models/jobLikes.entity';
 
 
 export class PostgreSQLAdapter implements PersistenceAdapterI {
@@ -34,7 +42,20 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
             type: 'postgres',
             url: this.url,
             synchronize: true,
-            entities: [Jobs, Platforms, Search],
+            entities: [
+                Jobs, 
+                Platforms, 
+                Search, 
+                User, 
+                City, 
+                Education, 
+                Industry, 
+                Province, 
+                User, 
+                JobHistory, 
+                Languages, 
+                JobLikes
+            ],
         });
     }
 
@@ -42,6 +63,7 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
     public async setup() {
         try {
             await this.client.initialize();
+            console.log('DB sincronizada');
             // console.log('PostgreSQL connected');
         } catch(err) {
             console.error(err);

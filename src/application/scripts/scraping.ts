@@ -8,7 +8,7 @@ const main = async () => {
     await SQLAdapter.setup();
     const scrapingAdapter = new ScrapingAdapter();
     await scrapingAdapter.setupBrowser();
-    const domain = new Domain(SQLAdapter, scrapingAdapter, null);
+    const domain = new Domain(SQLAdapter, scrapingAdapter);
     await domain.providersServices.jobsService.webScrapingJobs(20);
     // const urls = await domain.providersServices.jobsServiceI.getUrlComputrabajo('Supervisor');
     // console.log(urls);

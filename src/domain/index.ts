@@ -16,7 +16,7 @@ export class Domain {
     public providersServices: ProviderServices;
     
 
-    constructor(persistenceAdapter: PersistenceAdapterI, scrapingAdapter: ScrapingAdapterI, searchAdapter: SearchAdapterI) {
+    constructor(persistenceAdapter: PersistenceAdapterI, scrapingAdapter: ScrapingAdapterI) {
 
         this.providersServices = {
             platformsService: new PlatformsService(persistenceAdapter.platformsRepository),

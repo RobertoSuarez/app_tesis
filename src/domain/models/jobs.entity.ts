@@ -1,6 +1,7 @@
-import { Column, Entity, ManyToOne } from "typeorm";
+import { Column, Entity, ManyToOne, OneToMany } from "typeorm";
 import { TableBase } from "./common/tablebase.entity";
 import { Platforms } from "./platforms.entity";
+import { JobLikes } from "./jobLikes.entity";
 
 
 @Entity()
@@ -48,4 +49,7 @@ export class Jobs extends TableBase {
 
     @Column({ type: "timestamptz", nullable: true })
     scrapedAt: Date;
+
+    @OneToMany(() => JobLikes, (jobLikes) => jobLikes.job)
+    joblikes: JobLikes[];
 }

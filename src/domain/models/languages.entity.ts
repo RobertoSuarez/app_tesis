@@ -4,16 +4,14 @@ import { User } from "./user.entity";
 
 
 @Entity()
-export class Search extends TableBase {
-
+export class Languages extends TableBase {
 
     @Column()
-    query: string;
+    title: string;
 
-    @Column({ default: false })
-    sought: boolean;
+    @Column()
+    description: string;
 
-    @ManyToOne(() => User, (user) => user.searches, { nullable: true })
+    @ManyToOne(() => User, (user) => user.languages)
     user: User;
-
 }
