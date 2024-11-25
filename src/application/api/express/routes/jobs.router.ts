@@ -1,5 +1,6 @@
 import { NextFunction, Request, Response, Router } from 'express'
 import { JobsService } from '../../../../domain/services/jobs.service';
+import { User } from '../../../../domain/models/user.entity';
 
 
 export class JobsRouter {
@@ -18,7 +19,9 @@ export class JobsRouter {
 
     async getJobs(req: Request, res: Response, next: NextFunction) {
 
-        const jobs = await this.jobsService.getJobs('asdf', "programacion en golang");
+        const { user }: { user: User} = req['user'];
+        const search = req.query["search"] as string;
+        const jobs = await this.jobsService.getJobs(user.uid, search);
         return res.json({
             message: "Muchos trabajos",
             jobs,

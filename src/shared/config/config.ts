@@ -10,6 +10,7 @@ const config = {
     LINKEDIN_PASSWORD: process.env.LINKEDIN_PASSWORD,
     GCP_KEY: process.env.GCP_KEY,
     SEARCH_ENGINE_ID: process.env.SEARCH_ENGINE_ID,
+    KEY_JWT: process.env.KEY_JWT
 }
 
 export { config };

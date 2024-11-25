@@ -23,7 +23,7 @@ import { IdentificationType } from '../../../domain/models/identificationType.en
 
 export class PostgreSQLAdapter implements PersistenceAdapterI {
 
-    client: DataSource;
+    public client: DataSource;
     url: string;
     platformsRepository: PlatformsRepositoryI;
     jobsRepository: JobsRepository;

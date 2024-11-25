@@ -4,6 +4,7 @@ import { Jobs } from "../models/jobs.entity";
 import { config } from "../../shared/config/config";
 import { Repository } from "typeorm";
 import { JobsRepository } from "../../infrastructure/persistence/postgresql/repository/jobs.imp";
+import { UserService } from "./user.service";
 
 
 
@@ -17,6 +18,7 @@ export class JobsService {
         private _linkedinScraping: LinkedinScrapingI, 
         private _compuTrabajoScraping: CompuTrabajoScrapingI,
         private _multitrabajosScraping: MultitrabajosScrapingI,
+        private _userService: UserService,
     ) 
     {
         this.jobsRepositoryORM = this._jobsRepository.repositoryJobs;
@@ -146,6 +148,10 @@ export class JobsService {
     }
 
     async getJobs(userId: string, search: string) {
+
+        const userContext = await this._userService.getContextUser(userId);
+
+        console.log(userContext);
 
         const result = await this.jobsRepositoryORM.find({ take: 5 });
 
