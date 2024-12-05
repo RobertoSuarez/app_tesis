@@ -9,8 +9,8 @@ import { MultitrabajosScraping } from './puppeteer/multitrabajosScraping.imp';
 
 export class ScrapingAdapter implements ScrapingAdapterI {
     linkedinScraping: LinkedinScrapingI;
-    compuTrabajoScraping: CompuTrabajoScrapingI;
-    multitrabajoScraping: MultitrabajosScrapingI;
+    compuTrabajoScraping: CompuTrabajoScraping;
+    multitrabajoScraping: MultitrabajosScraping;
 
     browser: Browser;
     

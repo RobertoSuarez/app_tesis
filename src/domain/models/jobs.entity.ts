@@ -35,8 +35,14 @@ export class Jobs extends TableBase {
     @Column({ type: "json", nullable: true })
     attitudes: string[];
 
-    @Column({ nullable: true })
-    salaryRange: string;
+    @Column({ default: false })
+    hasSalaryRange: boolean;
+
+    @Column({ default: 0 })
+    salaryMin: number;
+
+    @Column({ default: 0 })
+    salaryMax: number;
     
     @Column({ nullable: true })
     disabilityInclusion: boolean;

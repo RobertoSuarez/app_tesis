@@ -53,6 +53,15 @@ export class User extends TableBase {
     @Column()
     disability: boolean;
 
+    @Column({ default: '' })
+    preferredWorkType: string;
+
+    @Column({ default: 450 })
+    expectedSalaryMin: number;
+
+    @Column({ default: 1000 })
+    expectedSalaryMax: number;
+
     @OneToMany(() => Education, (education) => education.user)
     educations: Education[];
 

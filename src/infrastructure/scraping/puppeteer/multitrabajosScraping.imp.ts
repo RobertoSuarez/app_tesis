@@ -131,6 +131,9 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
             salaryRange: z.string(),
             disabilityInclusion: z.boolean(),
             company: z.string(),
+            hasSalaryRange: z.boolean(),
+            salaryMax: z.number(),
+            salaryMin: z.number(),
         })
 
         const completion = await this._openai.beta.chat.completions.parse({
@@ -152,7 +155,9 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         const details = completion.choices[0].message.parsed;
         job.levelExperience = details.levelExperience;
         job.attitudes = details.attitudes;
-        job.salaryRange = details.salaryRange;
+        job.hasSalaryRange = details.hasSalaryRange;
+        job.salaryMin = details.salaryMin;
+        job.salaryMax = details.salaryMax;
         job.disabilityInclusion = details.disabilityInclusion;
         job.description = details.description;
         job.Company = details.company;

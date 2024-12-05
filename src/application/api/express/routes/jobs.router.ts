@@ -23,8 +23,11 @@ export class JobsRouter {
         const search = req.query["search"] as string;
         const jobs = await this.jobsService.getJobs(user.uid, search);
         return res.json({
-            message: "Muchos trabajos",
-            jobs,
+            status: 'success',
+            length: jobs.length,
+            jobs: jobs,
+            
+
         });
     }
 

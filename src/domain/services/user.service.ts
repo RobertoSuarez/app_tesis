@@ -39,7 +39,7 @@ export class UserService {
             where: {
                 uid: userUID,
             },
-            relations: ['identificationType', 'educations', 'jobHistory', 'languages', 'joblikes']
+            relations: ['identificationType', 'educations', 'jobHistory', 'languages', 'joblikes', 'city']
         });
 
         if (!user) {
