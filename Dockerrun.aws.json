@@ -1,0 +1,12 @@
+{
+    "AWSEBDockerrunVersion": "1",
+    "Image": {
+        "Name": "01101999/app-tesis-backend:v0.1",
+        "Update": "true"
+    },
+    "Ports": [
+        {
+            "ContainerPort": 3000
+        }
+    ]
+}

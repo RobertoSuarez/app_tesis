@@ -32,6 +32,7 @@ export class Domain {
             scrapingAdapter.compuTrabajoScraping,
             scrapingAdapter.multitrabajoScraping,
             userService,
+            persistenceAdapter.client,
         );
 
         this.providersServices = {

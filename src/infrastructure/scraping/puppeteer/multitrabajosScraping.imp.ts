@@ -137,16 +137,16 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         })
 
         const completion = await this._openai.beta.chat.completions.parse({
-            model: 'gpt-4o-mini-2024-07-18',
+            model: 'gpt-4o-mini',
             messages: [
-                { role: 'system', content: 'Extraer información de la oferta de empleo. Las respuesta siempre dámela en español, y la descripción dale una mejor estructura' },
+                { role: 'system', content: 'Extrae y organiza la información de la oferta de empleo detallada a continuación. Asegúrate de responder en español. Formatea la descripción para que sea clara y estructurada. Incluye el rango salarial si está disponible en los detalles proporcionados, en caso de que no tenga rango salaria el campo hasSalaryRange debe ser falso' },
                 { role: 'user', content: `
-                    I have the following job offer:
-                    Job title: ${job.title}
-                    Location: ${job.Location}
-                    Work type: ${job.workType}
-                    Work schedule type: ${job.workScheduleType}
-                    Description: ${job.description},
+                    Tengo la siguiente oferta de empleo:
+                    Título del puesto: ${job.title}
+                    Ubicación: ${job.Location}
+                    Tipo de trabajo: ${job.workType}
+                    Tipo de horario: ${job.workScheduleType}
+                    Descripción: ${job.description},
                     Datos extras: ${detailsExtras}
                     `},
             ],
