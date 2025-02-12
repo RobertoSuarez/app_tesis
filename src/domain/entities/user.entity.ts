@@ -13,71 +13,72 @@ import { IdentificationType } from "./identificationType.entity";
 @Entity()
 export class User extends TableBase {
 
+    @ManyToOne(() => IdentificationType, (it) => it.users, { nullable: true })
+    identificationType?: IdentificationType;
 
-    @ManyToOne(() => IdentificationType, (it) => it.users)
-    identificationType: IdentificationType;
+    @Column({ nullable: true })
+    identification?: string;
 
-    @Column()
-    identification: string;
+    // Campo obligatorio
+    @Column({ nullable: true })
+    firstName: string;
 
-    @Column()
-    firtName: string;
+    @Column({ nullable: true })
+    lastName?: string;
 
-    @Column()
-    lastName: string;
-
-    @Column()
+    // Campo obligatorio
+    @Column({ unique: true })
     email: string;
 
+    // Campo obligatorio
     @Column()
     password: string;
 
-    @Column()
-    birthday: Date;
+    @Column({ type: 'date', nullable: true })
+    birthday?: Date;
 
-    @Column()
-    whatsapp: string;
+    @Column({ nullable: true })
+    whatsapp?: string;
 
-    @Column()
-    urlAvatar: string;
+    @Column({ nullable: true })
+    urlAvatar?: string;
 
-    @Column()
-    emailConfirmed: Boolean;
+    @Column({ nullable: true, default: false })
+    emailConfirmed?: boolean;
 
-    @Column()
-    role: string;
+    @Column({ nullable: true })
+    role?: string;
 
-    @Column()
-    gender: string;
+    @Column({ nullable: true })
+    gender?: string;
 
-    @Column()
-    disability: boolean;
+    @Column({ nullable: true })
+    disability?: boolean;
 
-    @Column({ default: '' })
-    preferredWorkType: string;
+    @Column({ default: '', nullable: true })
+    preferredWorkType?: string;
 
-    @Column({ default: 450 })
-    expectedSalaryMin: number;
+    @Column({ default: 450, nullable: true })
+    expectedSalaryMin?: number;
 
-    @Column({ default: 1000 })
-    expectedSalaryMax: number;
+    @Column({ default: 1000, nullable: true })
+    expectedSalaryMax?: number;
 
     @OneToMany(() => Education, (education) => education.user)
-    educations: Education[];
+    educations?: Education[];
 
-    @ManyToOne(() => City, (city) => city.users)
-    city: City;
+    @ManyToOne(() => City, (city) => city.users, { nullable: true })
+    city?: City;
 
     @OneToMany(() => JobHistory, (jobHistory) => jobHistory.user)
-    jobHistory: JobHistory[];
+    jobHistory?: JobHistory[];
 
     @OneToMany(() => Languages, (languages) => languages.user)
-    languages: Languages[];
-
+    languages?: Languages[];
 
     @OneToMany(() => Search, (search) => search.user)
-    searches: Search[];
+    searches?: Search[];
 
     @OneToMany(() => JobLikes, (jobLikes) => jobLikes.user)
-    joblikes: JobLikes[];
+    joblikes?: JobLikes[];
 }

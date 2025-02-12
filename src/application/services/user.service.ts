@@ -53,6 +53,32 @@ export class UserService {
         return { token, user };
     }
 
+    async registerUser(firstName: string, email: string, password: string) {
+        try {
+            const user = await this._usersRepository.save({
+                firstName,
+                email,
+                password,
+                role: 'user-normal',
+                emailConfirmed: false,
+                disability: false,
+            });
+            return user.uid;
+        } catch (error: any) {
+            console.error("Error en registerUser:", error);
+
+            // Manejo específico para error de duplicidad (por ejemplo, en PostgreSQL, el código '23505' indica una violación de clave única)
+            if (error.code && error.code === '23505') {
+                throw new Error("El correo electrónico ya se encuentra registrado.");
+            }
+
+            // Para cualquier otro error se lanza un error genérico
+            throw new Error("Ocurrió un error al registrar el usuario. Por favor, inténtelo de nuevo más tarde.");
+        }
+    }
+
+
+
     async getContextUser(userUID: string) {
 
         const user = await this._usersRepository.findOne({

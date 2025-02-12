@@ -3,6 +3,7 @@ import { UserService } from "../../../application/services/user.service";
 import { config } from "../../../shared/config/config";
 import { verify } from "jsonwebtoken";
 import { User } from "../../../domain/entities/user.entity";
+import Joi from "joi";
 
 
 // Controlador para auth y user.
@@ -51,7 +52,66 @@ export class AuthController {
                 error: "Token inválido o expirado."
             });
         }
+    }
 
+    public async registerUser(req: Request, res: Response) {
+        try {
+            // Validar los datos del body usando Joi
+            const { error, value } = registerUserSchema.validate(req.body, { abortEarly: false });
 
+            // Si hay errores, se envía una respuesta con los mensajes de error
+            if (error) {
+                return res.status(400).json({
+                    errors: error.details.map(detail => detail.message)
+                });
+            }
+
+            // Extraer los valores validados (ya normalizados)
+            const { firstName, email, password } = value;
+
+            // Registrar el usuario usando el servicio correspondiente
+            const result = await this._userService.registerUser(firstName, email, password);
+
+            return res.status(201).json({
+                status: 'success',
+                message: 'El usuario se creó con éxito.',
+                data: result // Puedes ajustar o eliminar este campo según lo requieras
+            });
+        } catch (err) {
+            console.error('Error en registerUser:', err);
+            return res.status(500).json({
+                error: 'Ocurrió un error al registrar el usuario. Intenta nuevamente más tarde.',
+                details: err.message,
+            });
+        }
     }
 }
+
+const registerUserSchema = Joi.object({
+    firstName: Joi.string()
+        .trim()
+        .required()
+        .messages({
+            'string.base': 'El nombre debe ser una cadena de texto.',
+            'string.empty': 'El nombre es obligatorio.',
+            'any.required': 'El nombre es obligatorio.'
+        }),
+    email: Joi.string()
+        .email({ tlds: { allow: false } })
+        .required()
+        .messages({
+            'string.base': 'El correo electrónico debe ser una cadena de texto.',
+            'string.empty': 'El correo electrónico es obligatorio.',
+            'string.email': 'El formato del correo electrónico no es válido.',
+            'any.required': 'El correo electrónico es obligatorio.'
+        }),
+    password: Joi.string()
+        .min(6)
+        .required()
+        .messages({
+            'string.base': 'La contraseña debe ser una cadena de texto.',
+            'string.empty': 'La contraseña es obligatoria.',
+            'string.min': 'La contraseña debe tener al menos 6 caracteres.',
+            'any.required': 'La contraseña es obligatoria.'
+        })
+});
