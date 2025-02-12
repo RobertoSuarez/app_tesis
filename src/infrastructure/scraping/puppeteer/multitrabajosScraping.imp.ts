@@ -1,8 +1,8 @@
 import { Browser } from "puppeteer";
 import { MultitrabajosScrapingI } from "../../../domain/ports/jobs.port";
-import { Jobs } from "../../../domain/models/jobs.entity";
+import { Jobs } from "../../../domain/entities/jobs.entity";
 import OpenAI from "openai";
-import { Platforms } from "../../../domain/models/platforms.entity";
+import { Platforms } from "../../../domain/entities/platforms.entity";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
 

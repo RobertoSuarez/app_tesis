@@ -1,6 +1,6 @@
 import { PaginationQueryDto, PaginationResponseDto } from "../dtos/paginator.dtos";
 import { CreatePlatformDto } from "../dtos/platforms.dtos";
-import { Platforms } from "../models/platforms.entity";
+import { Platforms } from "../entities/platforms.entity";
 
 
 export interface PlatformsRepositoryI {

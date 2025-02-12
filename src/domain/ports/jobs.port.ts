@@ -1,4 +1,4 @@
-import { Jobs } from "../models/jobs.entity";
+import { Jobs } from "../entities/jobs.entity";
 
 
 export interface JobsRepositoryI {

@@ -1,7 +1,7 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import { AppAdapter } from "../adapter";
-import { Routes } from './routes';
+import { Routes } from '../../../infrastructure/api/routes';
 import { Domain } from '../../../domain';
 import { errorHandler, logErrors } from './middlewares/error.handler';
 

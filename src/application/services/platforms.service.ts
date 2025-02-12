@@ -1,7 +1,7 @@
-import { PaginationQueryDto, PaginationResponseDto } from "../dtos/paginator.dtos";
-import { CreatePlatformDto } from "../dtos/platforms.dtos";
-import { Platforms } from "../models/platforms.entity";
-import { PlatformsRepositoryI, PlatformsServiceI } from "../ports/platforms.port";
+import { PaginationQueryDto, PaginationResponseDto } from "../../domain/dtos/paginator.dtos";
+import { CreatePlatformDto } from "../../domain/dtos/platforms.dtos";
+import { Platforms } from "../../domain/entities/platforms.entity";
+import { PlatformsRepositoryI, PlatformsServiceI } from "../../domain/ports/platforms.port";
 
 
 export class PlatformsService implements PlatformsServiceI {

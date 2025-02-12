@@ -1,14 +1,14 @@
-import { CompuTrabajoScrapingI, JobsRepositoryI, LinkedinScrapingI, MultitrabajosScrapingI } from "../ports/jobs.port";
-import { SearchRepositoryI } from "../ports/search.port";
-import { Jobs } from "../models/jobs.entity";
+import { LinkedinScrapingI } from "../../domain/ports/jobs.port";
+import { SearchRepositoryI } from "../../domain/ports/search.port";
+import { Jobs } from "../../domain/entities/jobs.entity";
 import { config } from "../../shared/config/config";
 import { DataSource, Like, MoreThan, Repository } from "typeorm";
 import { JobsRepository } from "../../infrastructure/persistence/postgresql/repository/jobs.imp";
-import { UserService } from "./user.service";
-import { User } from "../models/user.entity";
+import { User } from "../../domain/entities/user.entity";
 import { CompuTrabajoScraping } from "../../infrastructure/scraping/puppeteer/compuTrabajoScraping.imp";
 import { MultitrabajosScraping } from "../../infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
-import { Search } from "../models/search.entity";
+import { Search } from "../../domain/entities/search.entity";
+import { UserService } from "./user.service";
 
 export interface Weights {
     relavance: number;
@@ -19,21 +19,18 @@ export interface Weights {
 
 export class JobsService {
 
-    private jobsRepositoryORM: Repository<Jobs>;
-    private searchRepositoryORM: Repository<Search>;
+    private _jobsRepository: Repository<Jobs>;
+    private _searchRepository: Repository<Search>;
 
     constructor(
-        private _jobsRepository: JobsRepository, 
-        private _searchRepository: SearchRepositoryI,
-        private _linkedinScraping: LinkedinScrapingI, 
+        private _clienteSQL: DataSource,
+        private _userService: UserService,
         private _compuTrabajoScraping: CompuTrabajoScraping,
         private _multitrabajosScraping: MultitrabajosScraping,
-        private _userService: UserService,
-        private _clienteSQL: DataSource,
     ) 
     {
-        this.jobsRepositoryORM = this._jobsRepository.repositoryJobs;
-        this.searchRepositoryORM = this._clienteSQL.getRepository(Search);
+        this._jobsRepository = this._clienteSQL.getRepository(Jobs);
+        this._searchRepository = this._clienteSQL.getRepository(Search);
     }
 
 
@@ -55,7 +52,7 @@ export class JobsService {
 
     async webScrapingJobs(amountScraping: number): Promise<void> {
 
-        const lastSearch = await this._searchRepository.lastSearch(amountScraping);
+        const lastSearch = await this._searchRepository.find({ order: { createdAt: 'DESC' }, take: amountScraping, where: { sought: false } })
         if (!lastSearch || lastSearch.length === 0) {
             return;
         }
@@ -82,7 +79,7 @@ export class JobsService {
                 // const url = `https://www.googleapis.com/customsearch/v1`;
 
                 // Aplicamos que ya se ha buscado el termino
-                await this._searchRepository.sought(currentSearch.uid);
+                await this._searchRepository.update({ uid: currentSearch.uid }, { sought: true });
 
 
                 // const response = await axios.get(url, { params });
@@ -103,7 +100,7 @@ export class JobsService {
 
                     try {
                         const url = urls[indexUrl];
-                        const ok = await this._jobsRepository.scraped(url);
+                        const ok = await this._jobsRepository.findOne({ where: { URL: url }});
                         if (ok) {
                             continue;
                         }
@@ -125,7 +122,7 @@ export class JobsService {
                             continue;
                         }
                         
-                        await this._jobsRepository.registerJob(job);
+                        await this._jobsRepository.save(job);
                     } catch (err) {
                         console.log(err);
                     } finally {
@@ -165,7 +162,7 @@ export class JobsService {
 
         const userContext = await this._userService.getContextUser(userId);
 
-        const searched = await this.searchRepositoryORM.findOne({
+        const searched = await this._searchRepository.findOne({
             where: {
                 query: search,
                 createdAt: MoreThan(new Date(Date.now() - 24 * 60 * 60 * 1000)),
@@ -173,7 +170,7 @@ export class JobsService {
         });
 
         if (!searched) {
-          await this.searchRepositoryORM.save({
+          await this._searchRepository.save({
             query: search,
             user: userContext,
             sought: false,
@@ -181,7 +178,7 @@ export class JobsService {
         }
 
 
-        const jobs: Jobs[] = await this.jobsRepositoryORM.find({
+        const jobs: Jobs[] = await this._jobsRepository.find({
             where: {
                 title: Like(`%${search}%`),
             }, 

@@ -1,5 +1,5 @@
 import { DataSource, Repository } from "typeorm";
-import { User } from "../models/user.entity";
+import { User } from "../../domain/entities/user.entity";
 import { sign } from 'jsonwebtoken';
 import { config } from "../../shared/config/config";
 
@@ -28,7 +28,27 @@ export class UserService {
 
         user.password = undefined;
 
-        var token = sign({user}, config.KEY_JWT, { expiresIn: '1h' });
+        var token = sign({ user }, config.KEY_JWT, { expiresIn: '1h' });
+
+        return { token, user };
+    }
+
+    // Se inicia sesion con el uid del usuario.
+    async loginWithID(userId: string) {
+        const user = await this._usersRepository.findOne({
+            where: {
+                uid: userId,
+            },
+            relations: ['identificationType']
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        user.password = undefined;
+
+        var token = sign({ user }, config.KEY_JWT, { expiresIn: '1h' });
 
         return { token, user };
     }

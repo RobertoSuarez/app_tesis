@@ -1,5 +1,5 @@
 import express from 'express';
-import { PlatformsServiceI } from '../../../../domain/ports/platforms.port';
+import { PlatformsServiceI } from '../../../domain/ports/platforms.port';
 
 
 export class PlatformsRouter {

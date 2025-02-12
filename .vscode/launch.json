@@ -9,7 +9,7 @@
       "request": "launch",
       "name": "Debug Script",
       "skipFiles": ["<node_internals>/**"],
-      "program": "${workspaceFolder}\\src\\application\\api\\index.ts",
+      "program": "${workspaceFolder}\\src\\index.ts",
       "runtimeArgs": [
         "-r",
         "ts-node/register",

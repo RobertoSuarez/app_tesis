@@ -1,5 +1,5 @@
 import { Browser } from 'puppeteer'
-import { Jobs } from "../../../domain/models/jobs.entity";
+import { Jobs } from "../../../domain/entities/jobs.entity";
 import { LinkedinScrapingI } from "../../../domain/ports/jobs.port";
 import { Client } from 'linkedin-private-api';
 

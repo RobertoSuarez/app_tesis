@@ -1,4 +1,4 @@
-import { Search } from "../models/search.entity";
+import { Search } from "../entities/search.entity";
 
 
 export interface SearchRepositoryI {
