@@ -3,22 +3,21 @@ import { DataSource } from 'typeorm';
 import { PersistenceAdapterI } from '../adapter';
 import { PlatformsRepositoryI } from '../../../domain/ports/platforms.port';
 import { PlatformsRepository } from './repository/plataforms.imp';
-import { Jobs } from '../../../domain/models/jobs.entity';
-import { Platforms } from '../../../domain/models/platforms.entity';
-import { Search } from '../../../domain/models/search.entity';
-import { JobsRepositoryI } from '../../../domain/ports/jobs.port';
 import { JobsRepository } from './repository/jobs.imp';
 import { SearchRepositoryI } from '../../../domain/ports/search.port';
 import { SearchRepository } from './repository/searchh.imp';
-import { User } from '../../../domain/models/user.entity';
-import { City } from '../../../domain/models/city.entity';
-import { Education } from '../../../domain/models/eductaion.entity';
-import { Industry } from '../../../domain/models/industry.entity';
-import { Province } from '../../../domain/models/province.entity';
-import { JobHistory } from '../../../domain/models/jobHistory.entity';
-import { Languages } from '../../../domain/models/languages.entity';
-import { JobLikes } from '../../../domain/models/jobLikes.entity';
-import { IdentificationType } from '../../../domain/models/identificationType.entity';
+import { Jobs } from 'openai/resources/fine-tuning/jobs/jobs';
+import { Platforms } from '../../../domain/entities/platforms.entity';
+import { Search } from '../../../domain/entities/search.entity';
+import { User } from '../../../domain/entities/user.entity';
+import { City } from '../../../domain/entities/city.entity';
+import { Education } from '../../../domain/entities/eductaion.entity';
+import { Industry } from '../../../domain/entities/industry.entity';
+import { Province } from '../../../domain/entities/province.entity';
+import { JobHistory } from '../../../domain/entities/jobHistory.entity';
+import { Languages } from '../../../domain/entities/languages.entity';
+import { JobLikes } from '../../../domain/entities/jobLikes.entity';
+import { IdentificationType } from '../../../domain/entities/identificationType.entity';
 
 
 export class PostgreSQLAdapter implements PersistenceAdapterI {
@@ -36,7 +35,7 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
         this.jobsRepository = new JobsRepository(this.client);
         this.searchRepository = new SearchRepository(this.client);
     }
-    
+
 
     connect() {
         return new DataSource({
@@ -44,17 +43,17 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
             url: this.url,
             synchronize: true,
             entities: [
-                Jobs, 
-                Platforms, 
-                Search, 
-                User, 
-                City, 
-                Education, 
-                Industry, 
-                Province, 
-                User, 
-                JobHistory, 
-                Languages, 
+                Jobs,
+                Platforms,
+                Search,
+                User,
+                City,
+                Education,
+                Industry,
+                Province,
+                User,
+                JobHistory,
+                Languages,
                 JobLikes,
                 IdentificationType,
             ],
@@ -67,7 +66,7 @@ export class PostgreSQLAdapter implements PersistenceAdapterI {
             await this.client.initialize();
             console.log('DB sincronizada');
             // console.log('PostgreSQL connected');
-        } catch(err) {
+        } catch (err) {
             console.error(err);
         }
     }

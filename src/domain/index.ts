@@ -17,27 +17,19 @@ interface ProviderServices {
 }
 
 export class Domain {
-    
+
     public providersServices: ProviderServices;
-    
+
 
     constructor(persistenceAdapter: PostgreSQLAdapter, scrapingAdapter: ScrapingAdapter) {
 
         const platformsService = new PlatformsService(persistenceAdapter.platformsRepository);
         const userService = new UserService(persistenceAdapter.client);
-        const jobsService = new JobsService(
-            persistenceAdapter.jobsRepository, 
-            persistenceAdapter.searchRepository,
-            scrapingAdapter.linkedinScraping, 
-            scrapingAdapter.compuTrabajoScraping,
-            scrapingAdapter.multitrabajoScraping,
-            userService,
-            persistenceAdapter.client,
-        );
+
 
         this.providersServices = {
             platformsService,
-            jobsService,
+            jobsService: null,
             userService,
         }
     }

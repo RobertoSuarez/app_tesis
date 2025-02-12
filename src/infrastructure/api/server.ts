@@ -3,7 +3,7 @@ import cors from 'cors';
 import { ControllerProvider, createProvider } from '../../bootstrap';
 import { initAuthRoutes } from './routes/auth.router';
 import { initJobsRoutes } from './routes/jobs.router';
-import { isAuthenticated } from '../../application/api/express/middlewares/auth.middlewares';
+import { isAuthenticated } from './middlewares/auth.middlewares';
 
 // ServerExpress configuramos todo los relacionado al servidor http con Express.
 
@@ -15,7 +15,7 @@ export class ServerExpress {
     constructor() {
         this.app = express();
     }
-    
+
     async initialize() {
         this._controllerProvider = await createProvider();
         this.initMiddlewares();

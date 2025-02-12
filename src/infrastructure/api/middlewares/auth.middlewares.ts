@@ -1,6 +1,6 @@
 import { NextFunction, Request, Response } from "express";
 import { verify } from 'jsonwebtoken';
-import { config } from "../../../../shared/config/config";
+import { config } from "../../../shared/config/config";
 
 
 export const isAuthenticated = (req: Request, res: Response, next: NextFunction) => {

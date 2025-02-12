@@ -1,20 +1,18 @@
 import express, { Express } from 'express';
 import cors from 'cors';
 import { AppAdapter } from "../adapter";
-import { Routes } from '../../../infrastructure/api/routes';
 import { Domain } from '../../../domain';
-import { errorHandler, logErrors } from './middlewares/error.handler';
+import { errorHandler, logErrors } from '../../../infrastructure/api/middlewares/error.handler';
 
 
 export class ExpressAdapter implements AppAdapter {
     app: Express;
-    router: Routes;
 
     constructor(domain: Domain) {
         this.app = express();
         this.app.use(cors());
         this.app.use(express.json());
-        this.router = new Routes(this.app, domain);
+
         this.app.use(logErrors);
         this.app.use(errorHandler);
     }

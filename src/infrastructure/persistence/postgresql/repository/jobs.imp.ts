@@ -1,6 +1,6 @@
 import { DataSource, Repository } from "typeorm";
 import { JobsRepositoryI } from "../../../../domain/ports/jobs.port";
-import { Jobs } from "../../../../domain/models/jobs.entity";
+import { Jobs } from "../../../../domain/entities/jobs.entity";
 
 
 export class JobsRepository implements JobsRepositoryI {
@@ -12,7 +12,7 @@ export class JobsRepository implements JobsRepositoryI {
     }
 
     async scraped(url: string): Promise<boolean> {
-        const job = await this.repositoryJobs.findOne({ where: { URL: url }});
+        const job = await this.repositoryJobs.findOne({ where: { URL: url } });
         if (!job) {
             return false;
         }

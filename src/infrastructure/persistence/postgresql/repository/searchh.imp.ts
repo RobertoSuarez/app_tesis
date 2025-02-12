@@ -1,6 +1,6 @@
 import { DataSource, Repository } from "typeorm";
 import { SearchRepositoryI } from "../../../../domain/ports/search.port";
-import { Search } from "../../../../domain/models/search.entity";
+import { Search } from "../../../../domain/entities/search.entity";
 
 
 export class SearchRepository implements SearchRepositoryI {

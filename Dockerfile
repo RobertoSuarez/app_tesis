@@ -21,4 +21,4 @@ ENV NODE_ENV=production
 EXPOSE 3000
 
 # Comando para iniciar la aplicación
-CMD [ "node", "dist/application/api/index.js" ]
+CMD [ "node", "dist/index.js" ]
