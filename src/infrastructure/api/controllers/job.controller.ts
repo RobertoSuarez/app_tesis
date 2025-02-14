@@ -6,7 +6,7 @@ import { User } from "../../../domain/entities/user.entity";
 export class JobsController {
     constructor(
         private _jobsService: JobsService
-    ) {}
+    ) { }
 
     async getJobs(req: Request, res: Response) {
         const { user }: { user: User } = req['user'];
@@ -18,5 +18,12 @@ export class JobsController {
             length: jobs.length,
             jobs: jobs,
         });
+    }
+
+    async scrapingJobs(req: Request, res: Response) {
+        await this._jobsService.webScrapingJobs(2);
+        return res.json({
+            message: 'se ha scrapeado todo',
+        })
     }
 }

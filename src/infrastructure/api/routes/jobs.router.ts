@@ -1,9 +1,11 @@
 import { Router } from 'express'
 import { JobsController } from '../controllers/job.controller';
+import { isAuthenticated } from '../middlewares/auth.middlewares';
 
 export const initJobsRoutes = (jobsController: JobsController) => {
     const router = Router();
-    router.get('/', (req, res) => jobsController.getJobs(req, res));
+    router.get('/', isAuthenticated, (req, res) => jobsController.getJobs(req, res));
+    router.post('/scraping', (req, res) => jobsController.scrapingJobs(req, res));
 
     return router;
 }

@@ -35,7 +35,7 @@ export class ServerExpress {
         }
 
         this.app.use('/api/auth', initAuthRoutes(this._controllerProvider.authController));
-        this.app.use('/api/jobs', isAuthenticated, initJobsRoutes(this._controllerProvider.jobsController));
+        this.app.use('/api/jobs', initJobsRoutes(this._controllerProvider.jobsController));
         console.log('Inicializacion de rutas');
     }
 
