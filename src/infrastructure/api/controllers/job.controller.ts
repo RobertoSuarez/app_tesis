@@ -21,7 +21,8 @@ export class JobsController {
     }
 
     async scrapingJobs(req: Request, res: Response) {
-        await this._jobsService.webScrapingJobs(2);
+        const { amount } = req.body;
+        await this._jobsService.webScrapingJobs(amount);
         return res.json({
             message: 'se ha scrapeado todo',
         })

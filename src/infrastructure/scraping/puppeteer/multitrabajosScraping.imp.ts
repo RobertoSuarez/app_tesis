@@ -13,44 +13,67 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
     constructor(
         private _browser: Browser,
         private _openai: OpenAI
-    ) {}
+    ) { }
 
     async searchJobs(query: string): Promise<string[]> {
+        // Validación del query
+        if (!query || !query.trim()) {
+            throw new Error('La consulta no puede estar vacía.');
+        }
 
         const page = await this._browser.newPage();
         await page.setViewport({
             width: 1280,
             height: 720,
-        })
-        const url = `https://www.multitrabajos.com/empleos-busqueda-${query.trim().replace(/\s+/g, '-')}.html`
-        await page.goto(url, { waitUntil: 'networkidle0' });
+        });
 
-        let links = await page.evaluate(() => {
-            const lista = document.querySelector('#listado-avisos').children;
-            if (document.querySelector('#listado-avisos').innerHTML.includes('No encontramos')) {
-                return null;
-            }
-            const result = [];
-            for (let index = 0; index < lista.length; index++) {
-                const element = lista[index];
-                const href = element.querySelector('a').getAttribute('href');
-                result.push(href);
-            }
-            return result;
-        })
+        const url = `https://www.multitrabajos.com/empleos-busqueda-${query.trim().replace(/\s+/g, '-')}.html`;
+        let links: string[] | null = null;
 
-        await page.close();
+        try {
+            await page.goto(url, { waitUntil: 'networkidle0' });
+            links = await page.evaluate(() => {
+                const listado = document.querySelector('#listado-avisos');
+                if (!listado) return null;  // No se encontró el contenedor esperado
 
+                // Verificar si en el contenido se indica que no se encontraron avisos
+                if (listado.innerHTML.includes('No encontramos')) {
+                    return null;
+                }
+
+                const result: string[] = [];
+                const lista = listado.children;
+                for (let index = 0; index < lista.length; index++) {
+                    const element = lista[index];
+                    const anchor = element.querySelector('a');
+                    if (anchor) {
+                        const href = anchor.getAttribute('href');
+                        if (href) result.push(href);
+                    }
+                }
+                return result;
+            });
+        } catch (error) {
+            console.error('Error al cargar la página o evaluar el DOM:', error);
+            links = null;
+        } finally {
+            await page.close();
+        }
+
+        // Si no se obtuvieron links, retorna arreglo vacío
         if (!links) {
             return [];
         }
 
+
+        // Procesamiento de los links (revisar la lógica de slice según la intención)
         links = links.slice(0, -1).slice(0, 10);
         links = links.map(link => `https://www.multitrabajos.com${link}`);
-        links = links.filter(url => /https:\/\/www\.multitrabajos\.com\/empleos\/.+-\d+\.html/.test(url))
-        
+        links = links.filter(url => /https:\/\/www\.multitrabajos\.com\/empleos\/.+-\d+\.html/.test(url));
+
         return links;
     }
+
 
 
 
@@ -140,7 +163,8 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
             model: 'gpt-4o-mini',
             messages: [
                 { role: 'system', content: 'Extrae y organiza la información de la oferta de empleo detallada a continuación. Asegúrate de responder en español. Formatea la descripción para que sea clara y estructurada. Incluye el rango salarial si está disponible en los detalles proporcionados, en caso de que no tenga rango salaria el campo hasSalaryRange debe ser falso' },
-                { role: 'user', content: `
+                {
+                    role: 'user', content: `
                     Tengo la siguiente oferta de empleo:
                     Título del puesto: ${job.title}
                     Ubicación: ${job.Location}

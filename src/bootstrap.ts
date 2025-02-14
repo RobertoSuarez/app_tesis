@@ -7,6 +7,8 @@ import { ConnectionDB } from "./infrastructure/database/connection";
 import { CompuTrabajoScraping } from "./infrastructure/scraping/puppeteer/compuTrabajoScraping.imp";
 import { config } from "./shared/config/config";
 import { launch } from "puppeteer";
+import puppeteer from 'puppeteer-extra'
+import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { MultitrabajosScraping } from "./infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
 
 export interface ControllerProvider {
@@ -20,17 +22,28 @@ export const createProvider = async (): Promise<ControllerProvider> => {
 
     let path = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if (process.platform === 'linux') {
+        // path = '/usr/bin/chromium';
+
         path = '/usr/bin/chromium-browser';
+
     }
+
+    puppeteer.use(StealthPlugin());
 
     const openai = new OpenAI({
         apiKey: config.OPENAI_API_KEY,
     })
 
-    const browser = await launch({
-        headless: false,
+    const browser = await puppeteer.launch({
+        headless: true,
         executablePath: path,
-        args: ['--no-sandbox', '--disable-setuid-sandbox', '--window-size=1280,720'],
+        args: [
+            '--no-sandbox',
+            '--disable-setuid-sandbox',
+            '--disable-dev-shm-usage',
+            '--disable-gpu',
+            '--window-size=1280,720'
+        ],
         timeout: 0,
     })
 

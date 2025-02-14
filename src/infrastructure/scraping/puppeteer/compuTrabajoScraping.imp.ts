@@ -17,8 +17,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
     }
 
     // getURLs recupera todas las urls de las ofertas que aparecen en la búsqueda.
-    async getURLs(search: string): Promise<string[]> {        
-        let page: Page = null; 
+    async getURLs(search: string): Promise<string[]> {
+        let page: Page = null;
         try {
             page = await this._browser.newPage();
             const url = `https://ec.computrabajo.com/trabajo-de-${search.replace(/\s+/g, '-')}`;
@@ -50,15 +50,15 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
         let page: Page;
 
         try {
-            
+
             page = await this._browser.newPage();
             page.setViewport({
                 height: 1080,
                 width: 1920
             })
-    
-            await page.goto(url, {waitUntil: 'networkidle0'});
-    
+
+            await page.goto(url, { waitUntil: 'networkidle0' });
+
             const data = await page.evaluate(() => {
 
                 try {
@@ -71,8 +71,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
                     const workScheduleType = tags[2].textContent.trim();
                     // const workScheduleType = details[1].textContent.trim()
                     // const description = document.querySelectorAll('.box_detail .fs16')[4].textContent.trim();
-        
-        
+
+
                     return {
                         title,
                         company,
@@ -82,12 +82,12 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
                         description
                     }
 
-                } catch(error) {
+                } catch (error) {
                     console.log(error);
                     return null;
                 }
-    
-    
+
+
             })
 
             if (!data) {
@@ -103,18 +103,18 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
             job.scrapedAt = new Date();
             const platform = new Platforms();
             platform.uid = '29fca5d9-2fc2-4baa-bfb2-28a67efd0a17';
-    
+
             job.platform = platform;
-    
+
             job = await this.completeJobWithAI(job);
         } catch (error) {
-            
+
             console.log(error);
             throw error;
         } finally {
             await page.close();
         }
-        
+
 
         return job;
     }
@@ -137,7 +137,8 @@ export class CompuTrabajoScraping implements CompuTrabajoScrapingI {
             model: 'gpt-4o-mini-2024-07-18',
             messages: [
                 { role: 'system', content: 'Extraer información de la oferta de empleo. Las respuesta siempre damela en español' },
-                { role: 'user', content: `
+                {
+                    role: 'user', content: `
                     I have the following job offer:
                     Empresa y localización: ${job.Location}
                     Job title: ${job.title}

@@ -10,12 +10,22 @@ RUN npm run build
 FROM node:alpine as production
 WORKDIR /app
 
+# Instalar Chromium y sus dependencias necesarias
+RUN apk add --no-cache \
+      chromium \
+      nss \
+      freetype \
+      harfbuzz \
+      ca-certificates \
+      ttf-freefont
+
+# Definir la ruta del ejecutable de Chromium para Puppeteer
+ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
+ENV NODE_ENV=production
+
 COPY --from=builder /app/node_modules ./node_modules
 COPY package*.json ./
 COPY --from=builder /app/dist ./dist
-
-# Configurar entorno de producción
-ENV NODE_ENV=production
 
 # Exponer el puerto
 EXPOSE 3000
