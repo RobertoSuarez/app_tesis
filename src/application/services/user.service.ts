@@ -2,15 +2,19 @@ import { DataSource, Repository } from "typeorm";
 import { User } from "../../domain/entities/user.entity";
 import { sign } from 'jsonwebtoken';
 import { config } from "../../shared/config/config";
+import { UpdateUser } from "../../domain/dtos/user.dtos";
+import { JobHistory } from "../../domain/entities/jobHistory.entity";
 
 
 
 export class UserService {
 
     private _usersRepository: Repository<User>;
+    private _jobHistory: Repository<JobHistory>;
 
     constructor(client: DataSource) {
         this._usersRepository = client.getRepository(User);
+        this._jobHistory = client.getRepository(JobHistory);
     }
 
     async login(email: string, password: string) {
@@ -92,6 +96,37 @@ export class UserService {
             throw new Error('User not found');
         }
 
+        return user;
+    }
+
+
+    async getUserByIDSimplet(UID: string) {
+        const user = await this._usersRepository.findOne({
+            where: {
+                uid: UID,
+            }
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        return user;
+    }
+
+    async updateUser(updateUser: UpdateUser) {
+        const user = await this._usersRepository.findOne({
+            where: {
+                uid: updateUser.uid,
+            }
+        });
+
+        if (!user) {
+            throw new Error('User not found');
+        }
+
+        Object.assign(user, updateUser);
+        await this._usersRepository.save(user);
         return user;
     }
 

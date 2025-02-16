@@ -4,6 +4,7 @@ import { ControllerProvider, createProvider } from '../../bootstrap';
 import { initAuthRoutes } from './routes/auth.router';
 import { initJobsRoutes } from './routes/jobs.router';
 import { isAuthenticated } from './middlewares/auth.middlewares';
+import { initUserRoutes } from './routes/users.router';
 
 // ServerExpress configuramos todo los relacionado al servidor http con Express.
 
@@ -34,6 +35,7 @@ export class ServerExpress {
             throw new Error('Error: _controllerProvider no inicializado');
         }
 
+        this.app.use('/api/user', initUserRoutes(this._controllerProvider.userController));
         this.app.use('/api/auth', initAuthRoutes(this._controllerProvider.authController));
         this.app.use('/api/jobs', initJobsRoutes(this._controllerProvider.jobsController));
         console.log('Inicializacion de rutas');

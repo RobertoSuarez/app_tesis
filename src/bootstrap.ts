@@ -10,10 +10,13 @@ import { launch } from "puppeteer";
 import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { MultitrabajosScraping } from "./infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
+import { UserController } from "./infrastructure/api/controllers/user.controller";
+import { JobHistoryService } from "./application/services/jobHistory.service";
 
 export interface ControllerProvider {
     authController: AuthController;
     jobsController: JobsController;
+    userController: UserController;
 }
 
 
@@ -56,13 +59,16 @@ export const createProvider = async (): Promise<ControllerProvider> => {
 
     const userService = new UserService(db.client);
     const jobsService = new JobsService(db.client, userService, computrabajoScraping, multitrabajoScraping);
+    const jobHistoryService = new JobHistoryService(db.client);
 
     const authController = new AuthController(userService);
     const jobsController = new JobsController(jobsService);
+    const userController = new UserController(userService, jobHistoryService);
 
     const provider: ControllerProvider = {
         authController: authController,
         jobsController: jobsController,
+        userController: userController,
     }
 
     return provider;
