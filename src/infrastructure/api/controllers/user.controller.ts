@@ -111,4 +111,6 @@ export class UserController {
             data: result.uid,
         })
     }
+
+
 }

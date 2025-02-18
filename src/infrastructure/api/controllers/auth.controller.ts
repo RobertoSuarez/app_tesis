@@ -15,11 +15,19 @@ export class AuthController {
 
     public async login(req: Request, res: Response) {
         const { email, password } = req.body;
-        const result = await this._userService.login(email, password);
-        res.json({
-            status: 'success',
-            data: result
-        });
+        try {
+            const result = await this._userService.login(email, password);
+            res.json({
+                status: 'success',
+                data: result
+            });
+        } catch (error) {
+            console.error("Error en login:", error);
+            res.status(400).json({
+                status: 'error',
+                message: error.message
+            });
+        }
     }
 
     public async signInWithToken(req: Request, res: Response) {
@@ -83,6 +91,23 @@ export class AuthController {
                 error: 'Ocurrió un error al registrar el usuario. Intenta nuevamente más tarde.',
                 details: err.message,
             });
+        }
+    }
+
+    public async verifyEmail(req: Request, res: Response) {
+        try {
+            const { token } = req.query;
+            await this._userService.verifyEmail(token as string);
+            res.json({
+                status: 'success',
+                message: 'El correo electrónico se verificó con éxito.'
+            });
+
+        } catch (error) {
+            res.status(400).json({
+                status: 'error',
+                message: error.message,
+            })
         }
     }
 }

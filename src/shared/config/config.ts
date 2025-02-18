@@ -11,7 +11,11 @@ const config = {
     GCP_KEY: process.env.GCP_KEY,
     SEARCH_ENGINE_ID: process.env.SEARCH_ENGINE_ID,
     KEY_JWT: process.env.KEY_JWT,
-    PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH
+    PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH,
+    FRONTEND_URL: process.env.FRONTEND_URL,
+    FRONTEND_URL_LOCAL: process.env.FRONTEND_URL_LOCAL,
+    EMAIL: process.env.EMAIL,
+    PASSWORD_EMAIL: process.env.PASSWORD_EMAIL,
 }
 
 export { config };

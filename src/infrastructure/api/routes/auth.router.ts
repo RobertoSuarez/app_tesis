@@ -9,6 +9,7 @@ export const initAuthRoutes = (authController: AuthController) => {
     router.post('/login', (req, res) => authController.login(req, res));
     router.post('/sign-in-with-token', (req, res) => authController.signInWithToken(req, res));
     router.post('/register-user', (req, res) => authController.registerUser(req, res));
+    router.get('/verify-email', (req, res) => authController.verifyEmail(req, res));
 
     return router;
 }
