@@ -23,6 +23,7 @@ export class LanguageService {
         const newLanguage = this._languageRepository.create({
             title: language.title,
             description: language.description,
+            nivel: language.nivel,
             user: user,
         });
 
