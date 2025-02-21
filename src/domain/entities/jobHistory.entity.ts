@@ -15,8 +15,11 @@ export class JobHistory extends TableBase {
     @Column()
     start: Date;
 
-    @Column()
+    @Column({ nullable: true })
     end: Date;
+
+    @Column({ default: false })
+    currentlyWorking: boolean;
 
     @ManyToOne(() => User, (user) => user.jobHistory)
     user: User;

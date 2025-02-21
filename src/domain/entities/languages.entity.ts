@@ -10,7 +10,7 @@ export class Languages extends TableBase {
     title: string;
 
     @Column({ default: 'Basico' })
-    nivel: string;
+    level: string;
 
     @Column()
     description: string;

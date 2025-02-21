@@ -27,7 +27,7 @@ export class JobHistoryService {
         return jobs;
     }
 
-    async registerWork({ jobTitle, company, end, start, userUID }: registerJobHistory) {
+    async registerWork({ jobTitle, company, end, start, userUID, currentlyWorking }: registerJobHistory) {
         // Primero, buscamos el usuario en la base de datos.
         const userRepository = this._jobHistory.manager.getRepository('User');
         const user = await userRepository.findOne({ where: { uid: userUID } });
@@ -42,6 +42,7 @@ export class JobHistoryService {
             end,
             start,
             user,
+            currentlyWorking,
         });
 
         const result = await this._jobHistory.save(jobHistory);

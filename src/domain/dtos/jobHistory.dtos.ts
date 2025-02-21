@@ -5,5 +5,6 @@ export interface registerJobHistory {
     company: string;
     start: Date;
     end: Date;
+    currentlyWorking: boolean;
     userUID: string;
 }

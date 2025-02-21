@@ -3,6 +3,6 @@
 export interface registerLanguage {
     userId: string;
     title: string;
-    nivel: string;
+    level: string;
     description: string;
 }

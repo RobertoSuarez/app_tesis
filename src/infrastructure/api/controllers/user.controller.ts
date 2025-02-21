@@ -99,12 +99,12 @@ export class UserController {
 
     public async registerLanguage(req: Request, res: Response) {
         const { uid } = req.params;
-        const { title, description, nivel } = req.body;
+        const { title, description, level } = req.body;
         const data: registerLanguage = {
             userId: uid,
             title,
             description,
-            nivel
+            level
         };
         const result = await this._languageService.registerLanguage(data);
         res.json({
