@@ -16,6 +16,7 @@ const config = {
     FRONTEND_URL_LOCAL: process.env.FRONTEND_URL_LOCAL,
     EMAIL: process.env.EMAIL,
     PASSWORD_EMAIL: process.env.PASSWORD_EMAIL,
+    BROWSER_CLOSE: process.env.BROWSER_CLOSE,
 }
 
 export { config };

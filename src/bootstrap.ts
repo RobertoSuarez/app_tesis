@@ -52,6 +52,10 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         timeout: 0,
     })
 
+    if (config.BROWSER_CLOSE) {
+        browser.close();
+    }
+
     const db = new ConnectionDB(config.dbUrl);
     await db.setup();
 
