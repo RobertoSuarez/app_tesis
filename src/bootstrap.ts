@@ -46,7 +46,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     })
 
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         executablePath: path,
         args: [
             '--no-sandbox',
