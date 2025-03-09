@@ -1,6 +1,6 @@
 import { Browser } from 'puppeteer'
-import { Jobs } from "../../../domain/entities/jobs.entity";
-import { LinkedinScrapingI } from "../../../domain/ports/jobs.port";
+import { Jobs } from "../../../core/domain/entities/jobs.entity";
+import { LinkedinScrapingI } from "../../../core/domain/ports/jobs.port";
 import { Client } from 'linkedin-private-api';
 
 
@@ -11,13 +11,13 @@ export class LinkedinScraping implements LinkedinScrapingI {
     username: string;
     password: string;
 
-    
-    
+
+
     constructor(
-        private _username: string, 
+        private _username: string,
         private _password: string
     ) {
-    }    
+    }
 
     async getJobs(query: string): Promise<Jobs[]> {
 
@@ -33,7 +33,7 @@ export class LinkedinScraping implements LinkedinScrapingI {
         return [];
     }
 
-    
+
     // async getJob(url: string): Promise<Jobs> {
     //     const page = await this.browser.newPage();
     //     await page.goto(url, {waitUntil: 'networkidle0'});

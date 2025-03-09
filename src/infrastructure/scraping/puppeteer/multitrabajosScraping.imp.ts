@@ -1,12 +1,11 @@
 import { Browser } from "puppeteer";
-import { MultitrabajosScrapingI } from "../../../domain/ports/jobs.port";
-import { Jobs } from "../../../domain/entities/jobs.entity";
+import { MultitrabajosScrapingI } from "../../../core/domain/ports/jobs.port";
+import { Jobs } from "../../../core/domain/entities/jobs.entity";
 import OpenAI from "openai";
-import { Platforms } from "../../../domain/entities/platforms.entity";
+import { Platforms } from "../../../core/domain/entities/platforms.entity";
+import { JobLikes } from "../../../core/domain/entities/jobLikes.entity";
 import { zodResponseFormat } from "openai/helpers/zod";
 import { z } from "zod";
-
-
 
 export class MultitrabajosScraping implements MultitrabajosScrapingI {
 
@@ -15,6 +14,10 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         private _openai: OpenAI
     ) { }
 
+    /**
+     * Realiza una búsqueda en multitrabajos según el query dado
+     * y devuelve un arreglo de links con las ofertas de empleo.
+     */
     async searchJobs(query: string): Promise<string[]> {
         // Validación del query
         if (!query || !query.trim()) {
@@ -22,10 +25,7 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         }
 
         const page = await this._browser.newPage();
-        await page.setViewport({
-            width: 1280,
-            height: 720,
-        });
+        await page.setViewport({ width: 1280, height: 720 });
 
         const url = `https://www.multitrabajos.com/empleos-busqueda-${query.trim().replace(/\s+/g, '-')}.html`;
         let links: string[] | null = null;
@@ -65,8 +65,7 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
             return [];
         }
 
-
-        // Procesamiento de los links (revisar la lógica de slice según la intención)
+        // Filtra y normaliza los links
         links = links.slice(0, -1).slice(0, 10);
         links = links.map(link => `https://www.multitrabajos.com${link}`);
         links = links.filter(url => /https:\/\/www\.multitrabajos\.com\/empleos\/.+-\d+\.html/.test(url));
@@ -74,32 +73,28 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         return links;
     }
 
-
-
-
+    /**
+     * Obtiene la información principal de la oferta de empleo
+     * desde la página y la asigna a la entidad Jobs.
+     */
     async getJob(url: string): Promise<Jobs> {
         let job = new Jobs();
 
         const page = await this._browser.newPage();
-        await page.setViewport({
-            width: 1280,
-            height: 720,
-        })
+        await page.setViewport({ width: 1280, height: 720 });
 
         await page.goto(url, { waitUntil: 'networkidle0' });
 
-        // TODO: hacer el web scraping.
-
+        // Realiza el scraping
         const data = await page.evaluate(() => {
-
             try {
-                const title = document.querySelector('#header-component h1')?.textContent.trim();
-                const company = document.querySelector('#header-component div div span')?.textContent.trim();
-                const location = document.querySelectorAll('#ficha-detalle h2')[1].textContent.trim();
-                const workType = document.querySelectorAll('#ficha-detalle h2')[2].textContent.trim();
-                const workScheduleType = document.querySelectorAll('#ficha-detalle h2')[4].textContent.trim();
-                const description = document.querySelector('#ficha-detalle').textContent;
-                const details = document.querySelector('#header-component').textContent;
+                const title = document.querySelector('#header-component h1')?.textContent?.trim() || '';
+                const company = document.querySelector('#header-component div div span')?.textContent?.trim() || '';
+                const location = document.querySelectorAll('#ficha-detalle h2')[1]?.textContent?.trim() || '';
+                const workType = document.querySelectorAll('#ficha-detalle h2')[2]?.textContent?.trim() || '';
+                const workScheduleType = document.querySelectorAll('#ficha-detalle h2')[4]?.textContent?.trim() || '';
+                const description = document.querySelector('#ficha-detalle')?.textContent || '';
+                const details = document.querySelector('#header-component')?.textContent || '';
 
                 return {
                     title,
@@ -108,9 +103,8 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
                     workType,
                     workScheduleType,
                     description,
-                    details,
+                    details
                 }
-
             } catch (error) {
                 console.log(error);
                 return {
@@ -119,14 +113,16 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
                     location: '',
                     workType: '',
                     workScheduleType: '',
-                    description: ''
+                    description: '',
+                    details: ''
                 }
             }
         });
 
-        // Cerramos la pagina
+        // Cerramos la página
         await page.close();
 
+        // Asignamos la información base al objeto job
         job.title = data.title;
         job.Company = data.company;
         job.Location = data.location;
@@ -136,17 +132,28 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         job.URL = url;
         job.scrapedAt = new Date();
 
+        // Asignamos la plataforma (dummy o real, según tu caso)
         const platform = new Platforms();
         platform.uid = '56f94243-74f1-4408-9ef5-ebb97bd615c1';
-
         job.platform = platform;
 
+        // Completamos con información inferida por IA
         job = await this.completeJobWithAI(job, data.details);
 
         return job;
     }
 
+    /**
+     * Utiliza IA (OpenAI) para inferir o completar campos faltantes:
+     * - area, position
+     * - bonus, extraHours
+     * - hasGrowthOpportunities, growthOpportunitiesDescription
+     * - alignmentWithProfession
+     * - companyReputation, costOfLivingIndex
+     * - Además, se corrigen o establecen de forma óptima los valores de workType y workScheduleType.
+     */
     async completeJobWithAI(job: Jobs, detailsExtras: string): Promise<Jobs> {
+        // Schema Zod que representa todos los campos a inferir
         const datos = z.object({
             levelExperience: z.string(),
             description: z.string(),
@@ -157,26 +164,69 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
             hasSalaryRange: z.boolean(),
             salaryMax: z.number(),
             salaryMin: z.number(),
-        })
 
+            // Campos NUEVOS de la entidad Jobs
+            area: z.string(),
+            position: z.string(),
+            bonus: z.number(),
+            extraHours: z.number(),
+            hasGrowthOpportunities: z.boolean(),
+            growthOpportunitiesDescription: z.string(),
+            alignmentWithProfession: z.string(),
+            companyReputation: z.number(),
+            costOfLivingIndex: z.number(),
+
+            // Nuevos campos para establecer mejor los tipos de trabajo
+            workType: z.string(),
+            workScheduleType: z.string()
+        });
+
+        // Llamada a la API de OpenAI
         const completion = await this._openai.beta.chat.completions.parse({
-            model: 'gpt-4o-mini',
+            model: 'gpt-4o-mini', // Ajusta el modelo según tus necesidades
             messages: [
-                { role: 'system', content: 'Extrae y organiza la información de la oferta de empleo detallada a continuación. Asegúrate de responder en español. Formatea la descripción para que sea clara y estructurada. Incluye el rango salarial si está disponible en los detalles proporcionados, en caso de que no tenga rango salaria el campo hasSalaryRange debe ser falso' },
                 {
-                    role: 'user', content: `
-                    Tengo la siguiente oferta de empleo:
-                    Título del puesto: ${job.title}
-                    Ubicación: ${job.Location}
-                    Tipo de trabajo: ${job.workType}
-                    Tipo de horario: ${job.workScheduleType}
-                    Descripción: ${job.description},
-                    Datos extras: ${detailsExtras}
-                    `},
+                    role: 'system',
+                    content: `
+            Extrae e infiere la información de la oferta de empleo que se te proporcionará.
+            Asegúrate de responder en español y formatea la descripción de manera clara y estructurada.
+            Incluye el rango salarial si está disponible; si no, "hasSalaryRange" debe ser false.
+            Además, infiere o corrige los siguientes campos:
+              - area (sector del puesto),
+              - position (nivel/rol, ej. 'Senior Developer'),
+              - bonus (bonificación adicional),
+              - extraHours (horas extra estimadas),
+              - hasGrowthOpportunities (si hay planes de carrera),
+              - growthOpportunitiesDescription (detalles de oportunidades de crecimiento),
+              - alignmentWithProfession (grado de alineación con la profesión),
+              - companyReputation (escala 0-10),
+              - costOfLivingIndex (escala 0-10 o valor aproximado).
+            Adicionalmente, revisa y establece de forma óptima los valores de:
+              - workType (por ejemplo, 'Remote', 'OnSite' o 'Hybrid'),
+              - workScheduleType (por ejemplo, 'FullTime', 'PartTime', 'Contract' o 'Internship').
+            En caso de no disponer de datos, usa 0 para números, "" para cadenas y false para booleanos.
+          `
+                },
+                {
+                    role: 'user',
+                    content: `
+            Tengo la siguiente oferta de empleo:
+            Título del puesto: ${job.title}
+            Ubicación: ${job.Location}
+            Tipo de trabajo inicial: ${job.workType}
+            Tipo de horario inicial: ${job.workScheduleType}
+            Descripción: ${job.description}
+            Datos extras: ${detailsExtras}
+          `
+                },
             ],
             response_format: zodResponseFormat(datos, 'details')
-        })
+        });
+
+        // Parseamos la respuesta para obtener el objeto tipado
         const details = completion.choices[0].message.parsed;
+
+        // Asignamos los valores al objeto job
         job.levelExperience = details.levelExperience;
         job.attitudes = details.attitudes;
         job.hasSalaryRange = details.hasSalaryRange;
@@ -186,8 +236,21 @@ export class MultitrabajosScraping implements MultitrabajosScrapingI {
         job.description = details.description;
         job.Company = details.company;
 
+        // Campos nuevos para AHP/MCDA
+        job.area = details.area;
+        job.position = details.position;
+        job.bonus = details.bonus;
+        job.extraHours = details.extraHours;
+        job.hasGrowthOpportunities = details.hasGrowthOpportunities;
+        job.growthOpportunitiesDescription = details.growthOpportunitiesDescription;
+        job.alignmentWithProfession = details.alignmentWithProfession;
+        job.companyReputation = details.companyReputation;
+        job.costOfLivingIndex = details.costOfLivingIndex;
+
+        // Actualización de workType y workScheduleType con los valores inferidos por la IA
+        job.workType = details.workType;
+        job.workScheduleType = details.workScheduleType;
+
         return job;
     }
-
-
 }

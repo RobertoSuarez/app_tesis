@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
-import { JobsService } from "../../../application/services/jobs.service";
-import { User } from "../../../domain/entities/user.entity";
+import { User } from "../../../core/domain/entities/user.entity";
+import { JobsService } from "../../../core/application/services/jobs.service";
 
 
 export class JobsController {

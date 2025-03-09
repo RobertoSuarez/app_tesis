@@ -2,9 +2,9 @@ import { DataSource, Repository } from "typeorm";
 import nodemailer from 'nodemailer';
 import { sign, verify } from 'jsonwebtoken';
 import { User } from "../../domain/entities/user.entity";
-import { config } from "../../shared/config/config";
 import { UpdateUser } from "../../domain/dtos/user.dtos";
 import { JobHistory } from "../../domain/entities/jobHistory.entity";
+import { config } from "../../../shared/config/config";
 
 
 

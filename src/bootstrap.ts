@@ -1,6 +1,4 @@
 import OpenAI from "openai";
-import { JobsService } from "./application/services/jobs.service";
-import { UserService } from "./application/services/user.service";
 import { AuthController } from "./infrastructure/api/controllers/auth.controller"
 import { JobsController } from "./infrastructure/api/controllers/job.controller";
 import { ConnectionDB } from "./infrastructure/database/connection";
@@ -11,14 +9,19 @@ import puppeteer from 'puppeteer-extra'
 import StealthPlugin from 'puppeteer-extra-plugin-stealth';
 import { MultitrabajosScraping } from "./infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
 import { UserController } from "./infrastructure/api/controllers/user.controller";
-import { JobHistoryService } from "./application/services/jobHistory.service";
-import { EducationService } from "./application/services/education.service";
-import { LanguageService } from "./application/services/language.service";
+import { UserService } from "./core/application/services/user.service";
+import { JobsService } from "./core/application/services/jobs.service";
+import { JobHistoryService } from "./core/application/services/jobHistory.service";
+import { EducationService } from "./core/application/services/education.service";
+import { LanguageService } from "./core/application/services/language.service";
+import { JobLikesController } from "./infrastructure/api/controllers/jobLikes.controller";
+import { JobLikesService } from "./core/application/services/JobLikes.service";
 
 export interface ControllerProvider {
     authController: AuthController;
     jobsController: JobsController;
     userController: UserController;
+    jobLikesController: JobLikesController;
 }
 
 
@@ -40,7 +43,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     })
 
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         executablePath: path,
         args: [
             '--no-sandbox',
@@ -52,6 +55,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         timeout: 0,
     })
 
+    // console.log(config.BROWSER_CLOSE);
     if (config.BROWSER_CLOSE) {
         browser.close();
     }
@@ -68,15 +72,18 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const jobHistoryService = new JobHistoryService(db.client);
     const educationService = new EducationService(db.client);
     const languageService = new LanguageService(db.client);
+    const jobLikesService = new JobLikesService(db.client);
 
     const authController = new AuthController(userService);
     const jobsController = new JobsController(jobsService);
     const userController = new UserController(userService, jobHistoryService, educationService, languageService);
+    const jobLikesController = new JobLikesController(jobLikesService);
 
     const provider: ControllerProvider = {
         authController: authController,
         jobsController: jobsController,
         userController: userController,
+        jobLikesController,
     }
 
     return provider;

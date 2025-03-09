@@ -1,12 +1,12 @@
 import { Request, Response } from "express";
-import { UserService } from "../../../application/services/user.service";
-import { UpdateUser } from "../../../domain/dtos/user.dtos";
-import { JobHistoryService } from "../../../application/services/jobHistory.service";
-import { registerJobHistory } from "../../../domain/dtos/jobHistory.dtos";
-import { EducationService } from "../../../application/services/education.service";
-import { createEducation } from "../../../domain/dtos/education.dtos";
-import { LanguageService } from "../../../application/services/language.service";
-import { registerLanguage } from "../../../domain/dtos/language.dtos";
+import { UpdateUser } from "../../../core/domain/dtos/user.dtos";
+import { registerJobHistory } from "../../../core/domain/dtos/jobHistory.dtos";
+import { createEducation } from "../../../core/domain/dtos/education.dtos";
+import { registerLanguage } from "../../../core/domain/dtos/language.dtos";
+import { UserService } from "../../../core/application/services/user.service";
+import { JobHistoryService } from "../../../core/application/services/jobHistory.service";
+import { EducationService } from "../../../core/application/services/education.service";
+import { LanguageService } from "../../../core/application/services/language.service";
 
 
 export class UserController {

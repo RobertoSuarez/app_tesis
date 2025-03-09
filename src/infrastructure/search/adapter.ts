@@ -1,4 +1,4 @@
-import { SearchEngineI } from "../../domain/ports/jobs.port";
+import { SearchEngineI } from "../../core/domain/ports/jobs.port";
 
 
 

@@ -1,5 +1,5 @@
 import express from 'express';
-import { PlatformsServiceI } from '../../../domain/ports/platforms.port';
+import { PlatformsServiceI } from '../../../core/domain/ports/platforms.port';
 
 
 export class PlatformsRouter {
@@ -12,7 +12,7 @@ export class PlatformsRouter {
         this.router = express.Router();
 
         this.router.post(
-            '/', 
+            '/',
             async (req, res, next) => await this.createPlatform(req, res, next, this.platformService),
         );
     }
@@ -22,7 +22,7 @@ export class PlatformsRouter {
         try {
             const platform = await platformsService.registerPlatform(req.body);
             res.json(platform);
-        } catch(err) {
+        } catch (err) {
             next(err)
         }
     }

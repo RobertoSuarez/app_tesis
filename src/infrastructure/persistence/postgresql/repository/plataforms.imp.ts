@@ -1,8 +1,8 @@
 import { DataSource, Repository } from "typeorm";
-import { PaginationQueryDto, PaginationResponseDto } from "../../../../domain/dtos/paginator.dtos";
-import { CreatePlatformDto } from "../../../../domain/dtos/platforms.dtos";
-import { PlatformsRepositoryI } from "../../../../domain/ports/platforms.port";
-import { Platforms } from "../../../../domain/entities/platforms.entity";
+import { PaginationQueryDto, PaginationResponseDto } from "../../../../core/domain/dtos/paginator.dtos";
+import { CreatePlatformDto } from "../../../../core/domain/dtos/platforms.dtos";
+import { PlatformsRepositoryI } from "../../../../core/domain/ports/platforms.port";
+import { Platforms } from "../../../../core/domain/entities/platforms.entity";
 
 
 export class PlatformsRepository implements PlatformsRepositoryI {

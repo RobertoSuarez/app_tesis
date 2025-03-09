@@ -1,9 +1,9 @@
 import { Request, Response } from "express";
-import { UserService } from "../../../application/services/user.service";
 import { config } from "../../../shared/config/config";
 import { verify } from "jsonwebtoken";
-import { User } from "../../../domain/entities/user.entity";
+import { User } from "../../../core/domain/entities/user.entity";
 import Joi from "joi";
+import { UserService } from "../../../core/application/services/user.service";
 
 
 // Controlador para auth y user.

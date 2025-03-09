@@ -1,6 +1,6 @@
 import { DataSource, Repository } from "typeorm";
-import { JobsRepositoryI } from "../../../../domain/ports/jobs.port";
-import { Jobs } from "../../../../domain/entities/jobs.entity";
+import { JobsRepositoryI } from "../../../../core/domain/ports/jobs.port";
+import { Jobs } from "../../../../core/domain/entities/jobs.entity";
 
 
 export class JobsRepository implements JobsRepositoryI {

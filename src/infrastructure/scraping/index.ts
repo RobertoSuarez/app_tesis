@@ -1,5 +1,5 @@
 import { launch, Browser } from 'puppeteer';
-import { CompuTrabajoScrapingI, LinkedinScrapingI, MultitrabajosScrapingI } from "../../domain/ports/jobs.port";
+import { CompuTrabajoScrapingI, LinkedinScrapingI, MultitrabajosScrapingI } from "../../core/domain/ports/jobs.port";
 import { ScrapingAdapterI } from "./adapter";
 import { CompuTrabajoScraping } from "./puppeteer/compuTrabajoScraping.imp";
 import { LinkedinScraping } from "./puppeteer/linkedinScraping.imp";
@@ -13,10 +13,10 @@ export class ScrapingAdapter implements ScrapingAdapterI {
     multitrabajoScraping: MultitrabajosScraping;
 
     browser: Browser;
-    
+
     // Aquí podemos configurar el puppeteer.
     constructor() {
-        
+
     }
 
     async setupBrowser() {
@@ -47,7 +47,7 @@ export class ScrapingAdapter implements ScrapingAdapterI {
 
     async closeBrowser() {
 
-       await this.browser.close();
+        await this.browser.close();
     }
 
 
