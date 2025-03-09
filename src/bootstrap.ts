@@ -33,9 +33,9 @@ export const createProvider = async (): Promise<ControllerProvider> => {
 
     let path = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
     if (process.platform === 'linux') {
-        // path = '/usr/bin/chromium';
+        path = '/usr/bin/chromium';
 
-        path = '/usr/bin/chromium-browser';
+        // path = '/usr/bin/chromium-browser';
 
     }
 
