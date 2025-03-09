@@ -16,12 +16,15 @@ import { EducationService } from "./core/application/services/education.service"
 import { LanguageService } from "./core/application/services/language.service";
 import { JobLikesController } from "./infrastructure/api/controllers/jobLikes.controller";
 import { JobLikesService } from "./core/application/services/JobLikes.service";
+import { NotificationsController } from "./infrastructure/api/controllers/notifications.controller";
+import { NotificationsService } from "./core/application/services/notifications.service";
 
 export interface ControllerProvider {
     authController: AuthController;
     jobsController: JobsController;
     userController: UserController;
     jobLikesController: JobLikesController;
+    notificationsController: NotificationsController;
 }
 
 
@@ -73,17 +76,21 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const educationService = new EducationService(db.client);
     const languageService = new LanguageService(db.client);
     const jobLikesService = new JobLikesService(db.client);
+    const notificationsService = new NotificationsService(db.client);
 
     const authController = new AuthController(userService);
     const jobsController = new JobsController(jobsService);
     const userController = new UserController(userService, jobHistoryService, educationService, languageService);
     const jobLikesController = new JobLikesController(jobLikesService);
+    const notificationsController = new NotificationsController(notificationsService);
 
     const provider: ControllerProvider = {
         authController: authController,
         jobsController: jobsController,
         userController: userController,
         jobLikesController,
+        notificationsController,
+
     }
 
     return provider;

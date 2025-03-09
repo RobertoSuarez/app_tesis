@@ -5,6 +5,7 @@ import { JobsService } from "../application/services/jobs.service";
 import { PlatformsService } from '../application/services/platforms.service';
 import { UserService } from "../application/services/user.service";
 import { JobLikesService } from "../application/services/JobLikes.service";
+import { NotificationsService } from "../application/services/notifications.service";
 
 // TODO: En ves de que exita una interface como proveedor seria bueno colocar directamente en el 
 // dominio cada una des las instancias de los servicios.
@@ -13,6 +14,7 @@ interface ProviderServices {
     jobsService: JobsService
     userService: UserService
     jobLikesService: JobLikesService
+    notificationsService: NotificationsService
 }
 
 export class Domain {
@@ -25,6 +27,7 @@ export class Domain {
         const platformsService = new PlatformsService(persistenceAdapter.platformsRepository);
         const userService = new UserService(persistenceAdapter.client);
         const jobLikesService = new JobLikesService(persistenceAdapter.client);
+        const notificationsService = new NotificationsService(persistenceAdapter.client);
 
 
         this.providersServices = {
@@ -32,6 +35,7 @@ export class Domain {
             jobsService: null,
             userService,
             jobLikesService,
+            notificationsService,
         }
     }
 }

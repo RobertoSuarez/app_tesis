@@ -7,6 +7,7 @@ import { Languages } from "./languages.entity";
 import { Search } from "./search.entity";
 import { JobLikes } from "./jobLikes.entity";
 import { IdentificationType } from "./identificationType.entity";
+import { Notification } from "./notification.entity";
 
 
 
@@ -78,6 +79,9 @@ export class User extends TableBase {
 
     @OneToMany(() => Search, (search) => search.user)
     searches?: Search[];
+
+    @OneToMany(() => Notification, (notification) => notification.user)
+    notifications?: Notification[];
 
     @OneToMany(() => JobLikes, (jobLikes) => jobLikes.user)
     joblikes?: JobLikes[];

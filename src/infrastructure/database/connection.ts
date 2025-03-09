@@ -12,6 +12,7 @@ import { JobHistory } from '../../core/domain/entities/jobHistory.entity';
 import { Languages } from '../../core/domain/entities/languages.entity';
 import { JobLikes } from '../../core/domain/entities/jobLikes.entity';
 import { IdentificationType } from '../../core/domain/entities/identificationType.entity';
+import { Notification } from '../../core/domain/entities/notification.entity';
 
 
 export class ConnectionDB {
@@ -44,6 +45,7 @@ export class ConnectionDB {
                 Languages,
                 JobLikes,
                 IdentificationType,
+                Notification,
             ],
         });
     }
