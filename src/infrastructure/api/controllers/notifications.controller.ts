@@ -18,4 +18,16 @@ export class NotificationsController {
             data: result,
         })
     }
+
+    async toggleRead(req: Request, res: Response) {
+        const uid = req.params.uid;
+
+        await this._notificationsService.toggleReadNotification(uid);
+
+        return res.json({
+            status: 'success',
+            data: true,
+        })
+
+    }
 }

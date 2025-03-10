@@ -13,6 +13,9 @@ export class Notification extends TableBase {
     @Column()
     body: string;
 
+    @Column({ default: false })
+    read: boolean;
+
     @ManyToOne(() => User, (user) => user.notifications, { nullable: true })
     user: User;
 }

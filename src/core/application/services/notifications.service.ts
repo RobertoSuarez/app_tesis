@@ -49,4 +49,18 @@ export class NotificationsService {
 
         return await this._notificationRepository.save(notificationEntity);
     }
+
+    async toggleReadNotification(uid: string) {
+        const notification = await this._notificationRepository.findOneBy({
+            uid: uid,
+        });
+
+        if (!notification) {
+            throw new Error('Error al encontrar la notificacion')
+        }
+
+        notification.read = !notification.read;
+
+        await this._notificationRepository.save(notification);
+    }
 }

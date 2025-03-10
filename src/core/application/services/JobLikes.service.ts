@@ -51,6 +51,9 @@ export class JobLikesService {
                     uid: userUID,
                 },
                 deletedAt: IsNull(),
+            },
+            order: {
+                createdAt: 'desc'
             }
         });
 
