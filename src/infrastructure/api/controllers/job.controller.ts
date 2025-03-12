@@ -1,6 +1,29 @@
 import { Request, Response } from "express";
 import { User } from "../../../core/domain/entities/user.entity";
-import { JobsService } from "../../../core/application/services/jobs.service";
+import { JobsService, Weights } from "../../../core/application/services/jobs.service";
+
+export const defaultWeights: Weights = {
+    overall: {
+        economic: 0.5,      // 50% del score final para criterios económicos
+        professional: 0.5,  // 50% del score final para criterios profesionales
+    },
+    economic: {
+        salary: 0.4,        // A1: Salario
+        location: 0.3,      // A2: Ubicación
+        workType: 0.3,      // A3: Tipo de trabajo
+    },
+    professional: {
+        relevance: 0.4,     // B1: Relevancia
+        company: 0.3,       // B2: Empresa
+        opportunities: 0.3, // B3: Oportunidades
+    },
+};
+
+export interface SearchMCDA {
+    search: string;
+    weights: Weights;
+}
+
 
 
 export class JobsController {
@@ -10,13 +33,25 @@ export class JobsController {
 
     async getJobs(req: Request, res: Response) {
         const { user }: { user: User } = req['user'];
-        const search = req.query["search"] as string;
+        // const search = req.query["search"] as string;
 
-        const jobs = await this._jobsService.getJobs(user.uid, search);
+        const body = req.body as SearchMCDA;
+
+        const jobs = await this._jobsService.getJobs(user.uid, body.search, body.weights);
         return res.json({
             status: 'success',
             length: jobs.length,
             jobs: jobs,
+        });
+    }
+
+    async getJobByID(req: Request, res: Response) {
+        const { uid } = req.params;
+
+        const result = await this._jobsService.getJobByID(uid);
+        return res.json({
+            status: 'success',
+            data: result,
         });
     }
 

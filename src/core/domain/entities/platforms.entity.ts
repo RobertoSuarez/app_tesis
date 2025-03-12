@@ -12,6 +12,9 @@ export class Platforms extends TableBase {
     @Column()
     url: string;
 
+    @Column({ nullable: true })
+    photoURL: string;
+
     @Column({ type: "timestamptz", nullable: true })
     lastScraped: Date;
 
