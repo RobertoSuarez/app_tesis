@@ -8,6 +8,7 @@ import { Search } from "./search.entity";
 import { JobLikes } from "./jobLikes.entity";
 import { IdentificationType } from "./identificationType.entity";
 import { Notification } from "./notification.entity";
+import { Province } from "./province.entity";
 
 
 
@@ -67,6 +68,9 @@ export class User extends TableBase {
 
     @OneToMany(() => Education, (education) => education.user)
     educations?: Education[];
+
+    @ManyToOne(() => Province, (province) => province.users)
+    province: Province;
 
     @ManyToOne(() => City, (city) => city.users, { nullable: true })
     city?: City;

@@ -18,6 +18,8 @@ import { JobLikesController } from "./infrastructure/api/controllers/jobLikes.co
 import { JobLikesService } from "./core/application/services/JobLikes.service";
 import { NotificationsController } from "./infrastructure/api/controllers/notifications.controller";
 import { NotificationsService } from "./core/application/services/notifications.service";
+import { LocationsService } from "./core/application/services/localitation.service";
+import { LocationsController } from "./infrastructure/api/controllers/locations.controller";
 
 export interface ControllerProvider {
     authController: AuthController;
@@ -25,6 +27,7 @@ export interface ControllerProvider {
     userController: UserController;
     jobLikesController: JobLikesController;
     notificationsController: NotificationsController;
+    locationsController: LocationsController;
 }
 
 
@@ -62,10 +65,10 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         timeout: 0,
     })
 
-    // console.log(config.BROWSER_CLOSE);
-    // if (config.BROWSER_CLOSE) {
-    //     browser.close();
-    // }
+    console.log(config.BROWSER_CLOSE);
+    if (config.BROWSER_CLOSE) {
+        browser.close();
+    }
 
     const db = new ConnectionDB(config.dbUrl);
     await db.setup();
@@ -75,18 +78,20 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const multitrabajoScraping = new MultitrabajosScraping(browser, openai);
 
     const userService = new UserService(db.client);
-    const jobsService = new JobsService(db.client, userService, computrabajoScraping, multitrabajoScraping);
     const jobHistoryService = new JobHistoryService(db.client);
     const educationService = new EducationService(db.client);
     const languageService = new LanguageService(db.client);
     const jobLikesService = new JobLikesService(db.client);
+    const jobsService = new JobsService(db.client, userService, computrabajoScraping, multitrabajoScraping, jobLikesService);
     const notificationsService = new NotificationsService(db.client);
+    const locationsService = new LocationsService(db.client);
 
     const authController = new AuthController(userService);
     const jobsController = new JobsController(jobsService);
     const userController = new UserController(userService, jobHistoryService, educationService, languageService);
     const jobLikesController = new JobLikesController(jobLikesService);
     const notificationsController = new NotificationsController(notificationsService);
+    const locationsController = new LocationsController(locationsService);
 
     const provider: ControllerProvider = {
         authController: authController,
@@ -94,7 +99,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         userController: userController,
         jobLikesController,
         notificationsController,
-
+        locationsController,
     }
 
     return provider;

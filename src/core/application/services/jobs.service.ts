@@ -6,6 +6,8 @@ import { UserService } from "./user.service";
 import { CompuTrabajoScraping } from "../../../infrastructure/scraping/puppeteer/compuTrabajoScraping.imp";
 import { MultitrabajosScraping } from "../../../infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
 import { config } from "../../../shared/config/config";
+import { JobLikes } from "../../domain/entities/jobLikes.entity";
+import { JobLikesService } from "./JobLikes.service";
 
 export interface Weights {
   // Pesos globales para cada grupo (la suma debe ser 1 o 100%, según convenga)
@@ -32,15 +34,18 @@ export class JobsService {
 
   private _jobsRepository: Repository<Jobs>;
   private _searchRepository: Repository<Search>;
+  private _jobLikesRepository: Repository<JobLikes>;
 
   constructor(
     private _clienteSQL: DataSource,
     private _userService: UserService,
     private _compuTrabajoScraping: CompuTrabajoScraping,
     private _multitrabajosScraping: MultitrabajosScraping,
+    private _jobLikesService: JobLikesService,
   ) {
     this._jobsRepository = this._clienteSQL.getRepository(Jobs);
     this._searchRepository = this._clienteSQL.getRepository(Search);
+    this._jobLikesRepository = this._clienteSQL.getRepository(JobLikes);
   }
 
   async test(query: string): Promise<void> {
@@ -177,18 +182,24 @@ export class JobsService {
       where: {
         title: Like(`%${search}%`),
       },
-      take: 200,
+      take: 500,
     });
 
     // Se evalúa cada oferta usando nuestro algoritmo MCDA
-    const scoredJobs = jobs.map((job) => ({
+    let scoredJobs = jobs.map((job) => ({
       job,
       score: this.calculateMCDAScore(job, userContext, weights),
+      like: this.isJobLikedByUser(job, userContext.joblikes),
     }));
 
     // Se ordenan las ofertas de mayor a menor score
-    scoredJobs.sort((a, b) => b.score - a.score);
-    return scoredJobs.slice(0, 40);
+    scoredJobs = scoredJobs.sort((a, b) => b.score - a.score).slice(0, 40);
+    return scoredJobs;
+  }
+
+  isJobLikedByUser(job: Jobs, jobLikes: JobLikes[]): boolean {
+    const result = jobLikes.some(like => like.job.uid === job.uid);
+    return result;
   }
 
   /**

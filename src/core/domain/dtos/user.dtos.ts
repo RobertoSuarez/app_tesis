@@ -8,6 +8,8 @@ export interface UpdateUser {
     birthday: string;
     whatsapp: string;
     gender: string;
+    provinceUID: string;
+    cityUID: string;
     preferredWorkType: string;
     expectedSalaryMin: number;
     expectedSalaryMax: number;

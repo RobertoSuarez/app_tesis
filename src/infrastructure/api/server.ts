@@ -7,6 +7,7 @@ import { isAuthenticated } from './middlewares/auth.middlewares';
 import { initUserRoutes } from './routes/users.router';
 import { initJobLikesRoutes } from './routes/jobLikes.router';
 import { initNotificationsRoutes } from './routes/notifications.router';
+import { initLocationsRoutes } from './routes/locations.router';
 
 // ServerExpress configuramos todo los relacionado al servidor http con Express.
 
@@ -46,6 +47,7 @@ export class ServerExpress {
         this.app.use('/api/jobs', initJobsRoutes(this._controllerProvider.jobsController));
         this.app.use('/api/jobLikes', initJobLikesRoutes(this._controllerProvider.jobLikesController))
         this.app.use('/api/notifications', initNotificationsRoutes(this._controllerProvider.notificationsController));
+        this.app.use('/api/locations', initLocationsRoutes(this._controllerProvider.locationsController));
         console.log('Inicializacion de rutas');
     }
 

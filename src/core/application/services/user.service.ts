@@ -5,17 +5,24 @@ import { User } from "../../domain/entities/user.entity";
 import { UpdateUser } from "../../domain/dtos/user.dtos";
 import { JobHistory } from "../../domain/entities/jobHistory.entity";
 import { config } from "../../../shared/config/config";
+import { City } from "../../domain/entities/city.entity";
+import { Province } from "../../domain/entities/province.entity";
 
 
 
 export class UserService {
 
     private _usersRepository: Repository<User>;
+    private _cityRepository: Repository<City>;
     private _jobHistory: Repository<JobHistory>;
+    private _provinceRepository: Repository<Province>;
+
 
     constructor(client: DataSource) {
         this._usersRepository = client.getRepository(User);
         this._jobHistory = client.getRepository(JobHistory);
+        this._cityRepository = client.getRepository(City);
+        this._provinceRepository = client.getRepository(Province);
     }
 
     async sendVerificationEmail(user: User) {
@@ -159,7 +166,7 @@ export class UserService {
             where: {
                 uid: userUID,
             },
-            relations: ['identificationType', 'educations', 'jobHistory', 'languages', 'joblikes', 'city']
+            relations: ['identificationType', 'educations', 'jobHistory', 'languages', 'joblikes.job', 'city']
         });
 
         if (!user) {
@@ -174,6 +181,10 @@ export class UserService {
         const user = await this._usersRepository.findOne({
             where: {
                 uid: UID,
+            },
+            relations: {
+                city: true,
+                province: true,
             }
         });
 
@@ -195,7 +206,25 @@ export class UserService {
             throw new Error('User not found');
         }
 
-        Object.assign(user, updateUser);
+        const city = await this._cityRepository.findOneBy({
+            uid: updateUser.cityUID,
+        })
+
+        const province = await this._provinceRepository.findOneBy({
+            uid: updateUser.provinceUID,
+        })
+
+        user.firstName = updateUser.firstName;
+        user.lastName = updateUser.lastName;
+        user.identification = updateUser.identification;
+        user.whatsapp = updateUser.whatsapp;
+        user.gender = updateUser.gender;
+        user.city = city;
+        user.province = province;
+        user.preferredWorkType = updateUser.preferredWorkType;
+        user.expectedSalaryMin = updateUser.expectedSalaryMin;
+        user.expectedSalaryMax = updateUser.expectedSalaryMax;
+
         await this._usersRepository.save(user);
         return user;
     }
