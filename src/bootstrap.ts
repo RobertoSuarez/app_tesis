@@ -20,6 +20,8 @@ import { NotificationsController } from "./infrastructure/api/controllers/notifi
 import { NotificationsService } from "./core/application/services/notifications.service";
 import { LocationsService } from "./core/application/services/localitation.service";
 import { LocationsController } from "./infrastructure/api/controllers/locations.controller";
+import { ChartsService } from "./core/application/services/charts.service";
+import { ChartsController } from "./infrastructure/api/controllers/charts.controller";
 
 export interface ControllerProvider {
     authController: AuthController;
@@ -28,6 +30,7 @@ export interface ControllerProvider {
     jobLikesController: JobLikesController;
     notificationsController: NotificationsController;
     locationsController: LocationsController;
+    chartsController: ChartsController;
 }
 
 
@@ -85,6 +88,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const jobsService = new JobsService(db.client, userService, computrabajoScraping, multitrabajoScraping, jobLikesService);
     const notificationsService = new NotificationsService(db.client);
     const locationsService = new LocationsService(db.client);
+    const chartsService = new ChartsService(db.client);
 
     const authController = new AuthController(userService);
     const jobsController = new JobsController(jobsService);
@@ -92,6 +96,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const jobLikesController = new JobLikesController(jobLikesService);
     const notificationsController = new NotificationsController(notificationsService);
     const locationsController = new LocationsController(locationsService);
+    const chartsController = new ChartsController(chartsService);
 
     const provider: ControllerProvider = {
         authController: authController,
@@ -100,6 +105,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         jobLikesController,
         notificationsController,
         locationsController,
+        chartsController,
     }
 
     return provider;

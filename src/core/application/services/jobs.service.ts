@@ -182,7 +182,11 @@ export class JobsService {
       where: {
         title: Like(`%${search}%`),
       },
-      take: 500,
+      take: 800,
+      order: {
+        hasSalaryRange: 'DESC',
+        salaryMax: 'DESC',
+      }
     });
 
     // Se evalúa cada oferta usando nuestro algoritmo MCDA
