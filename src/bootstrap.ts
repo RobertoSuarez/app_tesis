@@ -54,9 +54,9 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     const openai = new OpenAI({
         apiKey: config.OPENAI_API_KEY,
     })
-
+    console.log('Config Local: ', config.LOCAL)
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         executablePath: path,
         args: [
             '--no-sandbox',
