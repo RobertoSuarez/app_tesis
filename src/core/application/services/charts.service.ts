@@ -83,6 +83,21 @@ export class ChartsService {
             .orderBy('count', 'DESC')
             .getRawMany();
 
+        const top5Localities = await this._jobsRepository
+            .createQueryBuilder('jobs')
+            .select('jobs.Location', 'location') // Selecciona la columna Location
+            .addSelect('COUNT(*)', 'count') // Cuenta la cantidad de ofertas por localidad
+            .groupBy('jobs.Location') // Agrupa por la columna Location
+            .orderBy('count', 'DESC') // Ordena por el número de ofertas en orden descendente
+            .limit(5) // Limita los resultados a las 5 localidades principales
+            .getRawMany();
+
+
+        const top5LocalitiesResult = top5Localities.map(item => ({
+            location: item.location,
+            count: parseInt(item.count, 10)
+        }));
+
         // Formatear los resultados para que coincidan con la estructura deseada
         const jobCountByPlatformResult = jobCountByPlatform.map(item => ({
             platform: item.platform,
@@ -98,6 +113,7 @@ export class ChartsService {
             top5Areas,
             jobCountByMonthResult,
             jobCountByPlatformResult,
+            top5LocalitiesResult,
         };
 
     }
