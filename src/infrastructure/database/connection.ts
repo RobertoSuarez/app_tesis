@@ -13,6 +13,7 @@ import { Languages } from '../../core/domain/entities/languages.entity';
 import { JobLikes } from '../../core/domain/entities/jobLikes.entity';
 import { IdentificationType } from '../../core/domain/entities/identificationType.entity';
 import { Notification } from '../../core/domain/entities/notification.entity';
+import { ScrapingStats } from '../../core/domain/entities/scraping-stats.entity';
 
 
 export class ConnectionDB {
@@ -46,6 +47,7 @@ export class ConnectionDB {
                 JobLikes,
                 IdentificationType,
                 Notification,
+                ScrapingStats,
             ],
         });
     }

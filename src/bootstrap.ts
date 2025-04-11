@@ -56,7 +56,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     })
     console.log('Config Local: ', config.LOCAL)
     const browser = await puppeteer.launch({
-        headless: true,
+        headless: false,
         executablePath: path,
         args: [
             '--no-sandbox',
@@ -68,10 +68,10 @@ export const createProvider = async (): Promise<ControllerProvider> => {
         timeout: 0,
     })
 
-    console.log(config.BROWSER_CLOSE);
-    if (config.BROWSER_CLOSE) {
-        browser.close();
-    }
+    // console.log(config.BROWSER_CLOSE);
+    // if (config.BROWSER_CLOSE) {
+    //     browser.close();
+    // }
 
     const db = new ConnectionDB(config.dbUrl);
     await db.setup();

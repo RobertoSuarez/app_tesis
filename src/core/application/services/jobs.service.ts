@@ -8,6 +8,7 @@ import { MultitrabajosScraping } from "../../../infrastructure/scraping/puppetee
 import { config } from "../../../shared/config/config";
 import { JobLikes } from "../../domain/entities/jobLikes.entity";
 import { JobLikesService } from "./JobLikes.service";
+import { ScrapingStats } from "../../domain/entities/scraping-stats.entity";
 
 export interface Weights {
   // Pesos globales para cada grupo (la suma debe ser 1 o 100%, según convenga)
@@ -35,6 +36,7 @@ export class JobsService {
   private _jobsRepository: Repository<Jobs>;
   private _searchRepository: Repository<Search>;
   private _jobLikesRepository: Repository<JobLikes>;
+  private _scrapingStatsRepository: Repository<ScrapingStats>;
 
   constructor(
     private _clienteSQL: DataSource,
@@ -46,6 +48,7 @@ export class JobsService {
     this._jobsRepository = this._clienteSQL.getRepository(Jobs);
     this._searchRepository = this._clienteSQL.getRepository(Search);
     this._jobLikesRepository = this._clienteSQL.getRepository(JobLikes);
+    this._scrapingStatsRepository = this._clienteSQL.getRepository(ScrapingStats);
   }
 
   async test(query: string): Promise<void> {
@@ -73,6 +76,24 @@ export class JobsService {
     return job;
   }
 
+  /**
+   * Obtiene las estadísticas de scraping
+   * @param platform Plataforma opcional para filtrar (computrabajo, multitrabajos o total)
+   * @param limit Límite de registros a devolver (por defecto 10)
+   * @returns Lista de estadísticas de scraping ordenadas por fecha de creación descendente
+   */
+  async getScrapingStats(platform?: string, limit: number = 10) {
+    const whereCondition = platform ? { platform } : {};
+    
+    const stats = await this._scrapingStatsRepository.find({
+      where: whereCondition,
+      order: { createdAt: 'DESC' },
+      take: limit
+    });
+
+    return stats;
+  }
+
   async webScrapingJobs(amountScraping: number): Promise<void> {
     const lastSearch = await this._searchRepository.find({
       order: { createdAt: 'DESC' },
@@ -94,9 +115,25 @@ export class JobsService {
       }
 
       try {
+        // Contadores para estadísticas de scraping
+        const scrapingStats = {
+          computrabajo: { totalUrls: 0, successful: 0, failed: 0 },
+          multitrabajos: { totalUrls: 0, successful: 0, failed: 0 },
+          total: { totalUrls: 0, successful: 0, failed: 0 }
+        };
+
+        // Obtener URLs de MultiTrabajos
         const multitrabajosUrls = await this._multitrabajosScraping.searchJobs(currentSearch.query);
-        const urls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
-        urls.push(...multitrabajosUrls);
+        scrapingStats.multitrabajos.totalUrls = multitrabajosUrls.length;
+        scrapingStats.total.totalUrls += multitrabajosUrls.length;
+
+        // Obtener URLs de CompuTrabajo
+        const compuTrabajoUrls = await this._compuTrabajoScraping.getURLs(currentSearch.query);
+        scrapingStats.computrabajo.totalUrls = compuTrabajoUrls.length;
+        scrapingStats.total.totalUrls += compuTrabajoUrls.length;
+
+        // Combinar todas las URLs
+        const urls = [...compuTrabajoUrls, ...multitrabajosUrls];
 
         await this._searchRepository.update({ uid: currentSearch.uid }, { sought: true });
 
@@ -111,9 +148,23 @@ export class JobsService {
             switch (platform) {
               case 'multitrabajos':
                 job = await this._multitrabajosScraping.getJob(url);
+                if (job && job.title) {
+                  scrapingStats.multitrabajos.successful++;
+                  scrapingStats.total.successful++;
+                } else {
+                  scrapingStats.multitrabajos.failed++;
+                  scrapingStats.total.failed++;
+                }
                 break;
               case 'computrabajo':
                 job = await this._compuTrabajoScraping.getJob(url);
+                if (job && job.title) {
+                  scrapingStats.computrabajo.successful++;
+                  scrapingStats.total.successful++;
+                } else {
+                  scrapingStats.computrabajo.failed++;
+                  scrapingStats.total.failed++;
+                }
                 break;
               default:
                 continue;
@@ -122,8 +173,22 @@ export class JobsService {
             await this._jobsRepository.save(job);
           } catch (err) {
             console.error(`Error procesando URL: ${err.message}`);
+            // Incrementar contador de fallos según la plataforma
+            const platform = this.getPlatform(urls[indexUrl]);
+            if (platform === 'multitrabajos') {
+              scrapingStats.multitrabajos.failed++;
+            } else if (platform === 'computrabajo') {
+              scrapingStats.computrabajo.failed++;
+            }
+            scrapingStats.total.failed++;
           }
         }
+
+        // Guardar estadísticas de scraping para cada plataforma y el total
+        await this.saveScrapingStats('computrabajo', currentSearch.query, scrapingStats.computrabajo);
+        await this.saveScrapingStats('multitrabajos', currentSearch.query, scrapingStats.multitrabajos);
+        await this.saveScrapingStats('total', currentSearch.query, scrapingStats.total);
+
       } catch (err) {
         console.error(`Error en el scraping de "${currentSearch.query}": ${err.message}`);
       }
@@ -318,5 +383,52 @@ export class JobsService {
     const normalizedOverlapUser = userRange > 0 ? overlap / userRange : 0;
     const score = (normalizedOverlapJob + normalizedOverlapUser) / 2;
     return Math.max(0, Math.min(score, 1));
+  }
+
+  /**
+   * Guarda las estadísticas de scraping en la base de datos
+   * @param platform Plataforma de la que se extrajeron las ofertas (computrabajo, multitrabajos o total)
+   * @param searchQuery Consulta de búsqueda utilizada
+   * @param stats Estadísticas de scraping (total de URLs, extracciones exitosas y fallidas)
+   */
+  private async saveScrapingStats(
+    platform: string,
+    searchQuery: string,
+    stats: { totalUrls: number; successful: number; failed: number }
+  ): Promise<void> {
+    try {
+      // Verificar si hay algún valor mayor que cero
+      const hasNonZeroValues = stats.totalUrls > 0 || stats.successful > 0 || stats.failed > 0;
+      
+      // Solo guardar si hay al menos un valor mayor que cero
+      if (!hasNonZeroValues) {
+        console.log(`Omitiendo estadísticas para ${platform} ya que todos los valores son cero.`);
+        return;
+      }
+
+      // Calcular la tasa de éxito (porcentaje de extracciones exitosas sobre el total de URLs)
+      const successRate = stats.totalUrls > 0 ? (stats.successful / stats.totalUrls) * 100 : 0;
+
+      // Crear una nueva instancia de ScrapingStats
+      const scrapingStats = new ScrapingStats();
+      scrapingStats.searchQuery = searchQuery;
+      scrapingStats.platform = platform;
+      scrapingStats.totalUrlsFound = stats.totalUrls;
+      scrapingStats.successfulExtractions = stats.successful;
+      scrapingStats.failedExtractions = stats.failed;
+      scrapingStats.successRate = parseFloat(successRate.toFixed(2)); // Redondear a 2 decimales
+
+      // Guardar en la base de datos
+      await this._scrapingStatsRepository.save(scrapingStats);
+
+      console.log(`Estadísticas de scraping guardadas para ${platform}:`);
+      console.log(`- Consulta: ${searchQuery}`);
+      console.log(`- URLs encontradas: ${stats.totalUrls}`);
+      console.log(`- Extracciones exitosas: ${stats.successful}`);
+      console.log(`- Extracciones fallidas: ${stats.failed}`);
+      console.log(`- Tasa de éxito: ${successRate.toFixed(2)}%`);
+    } catch (error) {
+      console.error(`Error al guardar estadísticas de scraping: ${error.message}`);
+    }
   }
 }

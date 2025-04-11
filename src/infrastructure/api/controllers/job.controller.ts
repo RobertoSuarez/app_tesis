@@ -62,4 +62,39 @@ export class JobsController {
             message: 'se ha scrapeado todo',
         })
     }
+
+    /**
+     * Obtiene las estadísticas de scraping
+     * @param req Request - puede incluir query params platform y limit
+     * @param res Response
+     * @returns JSON con las estadísticas de scraping
+     */
+    async getScrapingStats(req: Request, res: Response) {
+        try {
+            const platform = req.query.platform as string;
+            const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+
+            const stats = await this._jobsService.getScrapingStats(platform, limit);
+            
+            // Calcular la tasa de éxito promedio si hay estadísticas
+            let averageSuccessRate = 0;
+            if (stats.length > 0) {
+                averageSuccessRate = stats.reduce((acc, stat) => acc + stat.successRate, 0) / stats.length;
+            }
+
+            return res.json({
+                status: 'success',
+                data: {
+                    stats,
+                    averageSuccessRate: parseFloat(averageSuccessRate.toFixed(2)),
+                    totalRecords: stats.length
+                }
+            });
+        } catch (error) {
+            return res.status(500).json({
+                status: 'error',
+                message: `Error al obtener estadísticas de scraping: ${error.message}`
+            });
+        }
+    }
 }

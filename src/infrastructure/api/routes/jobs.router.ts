@@ -5,8 +5,9 @@ import { isAuthenticated } from '../middlewares/auth.middlewares';
 export const initJobsRoutes = (jobsController: JobsController) => {
     const router = Router();
     router.post('/', isAuthenticated, (req, res) => jobsController.getJobs(req, res));
-    router.get('/:uid', isAuthenticated, (req, res) => jobsController.getJobByID(req, res));
     router.post('/scraping', (req, res) => jobsController.scrapingJobs(req, res));
+    router.get('/stats/scraping', (req, res) => jobsController.getScrapingStats(req, res));
+    router.get('/:uid', isAuthenticated, (req, res) => jobsController.getJobByID(req, res));
 
     return router;
 }
