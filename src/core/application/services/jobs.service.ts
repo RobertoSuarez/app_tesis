@@ -31,7 +31,6 @@ export interface Weights {
   };
 }
 
-
 export class JobsService {
 
   private _jobsRepository: Repository<Jobs>;
@@ -521,7 +520,7 @@ export class JobsService {
             if (condition) {
               whereConditions.workType = condition;
             }
-          } else {
+          } else if (variations.length === 1) {
             whereConditions.workType = Like(`%${variations[0]}%`);
           }
           console.log('Expanded workType variations:', variations);
@@ -865,4 +864,40 @@ export class JobsService {
       console.error(`Error al guardar estadísticas de scraping: ${error.message}`);
     }
   }
+
+  /**
+   * Obtiene los valores distintos para las columnas usadas como filtros.
+   */
+  async getDistinctFilterValues(): Promise<{
+    modalities: string[];
+    contractTypes: string[];
+    workSchedules: string[];
+    experienceLevels: string[];
+  }> {
+    const queryBuilder = this._jobsRepository.createQueryBuilder("job");
+
+    // Helper para obtener valores distintos
+    const getDistinctValues = async (columnName: string): Promise<string[]> => {
+      const results = await queryBuilder
+        .select(`DISTINCT job.${columnName}`, columnName)
+        .where(`job.${columnName} IS NOT NULL AND job.${columnName} != ''`)
+        .orderBy(`job.${columnName}`, 'ASC')
+        .getRawMany();
+      return results.map(result => result[columnName]);
+    };
+
+    // Obtener valores para cada filtro
+    const modalities = await getDistinctValues('workType'); 
+    const contractTypes = await getDistinctValues('workScheduleType'); 
+    const workSchedules = contractTypes; 
+    const experienceLevels = await getDistinctValues('levelExperience'); 
+
+    return {
+      modalities,
+      contractTypes,
+      workSchedules, 
+      experienceLevels,
+    };
+  }
+
 }

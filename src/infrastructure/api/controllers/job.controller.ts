@@ -145,4 +145,20 @@ export class JobsController {
             });
         }
     }
+
+    async getFilterOptions(req: Request, res: Response) {
+        try {
+            const filterValues = await this._jobsService.getDistinctFilterValues();
+            return res.json({
+                status: 'success',
+                data: filterValues,
+            });
+        } catch (error) {
+            console.error('Error in getFilterOptions controller:', error);
+            return res.status(500).json({
+                status: 'error',
+                message: error.message || 'Error retrieving filter options',
+            });
+        }
+    }
 }

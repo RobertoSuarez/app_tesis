@@ -11,6 +11,9 @@ export const initJobsRoutes = (jobsController: JobsController) => {
     // Mantener la ruta original para compatibilidad con versiones anteriores
     router.post('/', isAuthenticated, (req, res) => jobsController.getJobs(req, res));
     
+    // Nueva ruta para obtener las opciones de filtro
+    router.get('/filter-options', isAuthenticated, (req, res) => jobsController.getFilterOptions(req, res));
+
     // Rutas adicionales
     router.post('/scraping', (req, res) => jobsController.scrapingJobs(req, res));
     router.get('/stats/scraping', (req, res) => jobsController.getScrapingStats(req, res));
