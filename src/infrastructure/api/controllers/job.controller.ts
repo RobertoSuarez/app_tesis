@@ -22,6 +22,35 @@ export const defaultWeights: Weights = {
 export interface SearchMCDA {
     search: string;
     weights: Weights;
+    filters?: JobFilters;
+    sort?: SortOptions;
+    pagination?: PaginationOptions;
+}
+
+export interface JobFilters {
+    workType?: string | string[];          // Remote, OnSite, Hybrid
+    workScheduleType?: string | string[];  // FullTime, PartTime, Contract, Internship
+    location?: string | string[];          // City or region
+    levelExperience?: string | string[];   // Entry, Junior, Mid, Senior, etc.
+    salaryMin?: number;                    // Minimum salary
+    salaryMax?: number;                    // Maximum salary
+    hasSalaryRange?: boolean;              // Only jobs with salary information
+    area?: string | string[];              // Job sector/industry
+    companyReputation?: number;            // Minimum company reputation
+    hasGrowthOpportunities?: boolean;      // Jobs with growth opportunities
+    disabilityInclusion?: boolean;         // Jobs with disability inclusion
+    datePosted?: string;                   // Filter by date posted (e.g., 'last24h', 'last7d', 'last30d')
+    companies?: string[];                  // Filter by specific companies
+}
+
+export interface SortOptions {
+    field: string;        // Field to sort by: 'score', 'salary', 'datePosted', 'companyReputation', etc.
+    direction: 'ASC' | 'DESC'; // Sort direction
+}
+
+export interface PaginationOptions {
+    page: number;         // Page number (starting from 1)
+    limit: number;        // Number of items per page
 }
 
 
@@ -37,12 +66,31 @@ export class JobsController {
 
         const body = req.body as SearchMCDA;
 
-        const jobs = await this._jobsService.getJobs(user.uid, body.search, body.weights);
-        return res.json({
-            status: 'success',
-            length: jobs.length,
-            jobs: jobs,
-        });
+        try {
+            const { jobs, total, page, totalPages } = await this._jobsService.getJobs(
+                user.uid, 
+                body.search, 
+                body.weights, 
+                body.filters, 
+                body.sort, 
+                body.pagination
+            );
+
+            return res.json({
+                status: 'success',
+                length: jobs.length,
+                total,
+                page,
+                totalPages,
+                jobs,
+            });
+        } catch (error) {
+            console.error('Error in getJobs controller:', error);
+            return res.status(500).json({
+                status: 'error',
+                message: error.message || 'Error retrieving jobs',
+            });
+        }
     }
 
     async getJobByID(req: Request, res: Response) {

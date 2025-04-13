@@ -4,7 +4,14 @@ import { isAuthenticated } from '../middlewares/auth.middlewares';
 
 export const initJobsRoutes = (jobsController: JobsController) => {
     const router = Router();
+    
+    // Ruta principal para búsqueda avanzada de trabajos con filtros, ordenamiento y paginación
+    router.post('/search', isAuthenticated, (req, res) => jobsController.getJobs(req, res));
+    
+    // Mantener la ruta original para compatibilidad con versiones anteriores
     router.post('/', isAuthenticated, (req, res) => jobsController.getJobs(req, res));
+    
+    // Rutas adicionales
     router.post('/scraping', (req, res) => jobsController.scrapingJobs(req, res));
     router.get('/stats/scraping', (req, res) => jobsController.getScrapingStats(req, res));
     router.get('/:uid', isAuthenticated, (req, res) => jobsController.getJobByID(req, res));

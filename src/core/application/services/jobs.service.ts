@@ -1,7 +1,8 @@
 import { Jobs } from "../../domain/entities/jobs.entity";
-import { DataSource, Like, MoreThan, Repository } from "typeorm";
+import { DataSource, Like, MoreThan, MoreThanOrEqual, LessThanOrEqual, Repository, Raw, In, Any } from "typeorm";
 import { User } from "../../domain/entities/user.entity";
 import { Search } from "../../domain/entities/search.entity";
+import { JobFilters, SortOptions, PaginationOptions } from "../../../infrastructure/api/controllers/job.controller";
 import { UserService } from "./user.service";
 import { CompuTrabajoScraping } from "../../../infrastructure/scraping/puppeteer/compuTrabajoScraping.imp";
 import { MultitrabajosScraping } from "../../../infrastructure/scraping/puppeteer/multitrabajosScraping.imp";
@@ -224,7 +225,14 @@ export class JobsService {
    * 
    * La puntuación final se obtiene combinando ambas partes.
    */
-  async getJobs(userId: string, search: string, weights: Weights) {
+  async getJobs(
+    userId: string, 
+    search: string, 
+    weights: Weights,
+    filters?: JobFilters,
+    sort?: SortOptions,
+    pagination?: PaginationOptions
+  ) {
     const userContext = await this._userService.getContextUser(userId);
 
     // Se registra la búsqueda reciente
@@ -242,16 +250,143 @@ export class JobsService {
       });
     }
 
-    // Se obtienen las ofertas cuyo título contenga el término de búsqueda
-    const jobs: Jobs[] = await this._jobsRepository.find({
-      where: {
-        title: Like(`%${search}%`),
-      },
-      take: 800,
-      order: {
-        hasSalaryRange: 'DESC',
-        salaryMax: 'DESC',
+    console.log('Search term:', search);
+    
+    // Construir las condiciones de búsqueda avanzada
+    let whereConditions: any;
+    
+    if (search && search.trim() !== '') {
+      // Campos en los que buscar, con pesos de relevancia (1-10)
+      const searchFields = [
+        { field: 'title', weight: 10 },
+        { field: 'description', weight: 8 },
+        { field: 'Company', weight: 7 },
+        { field: 'position', weight: 9 },
+        { field: 'area', weight: 6 },
+        { field: 'Location', weight: 5 },
+        { field: 'workType', weight: 4 },
+        { field: 'levelExperience', weight: 6 },
+        { field: 'growthOpportunitiesDescription', weight: 3 },
+        { field: 'alignmentWithProfession', weight: 5 }
+      ];
+      
+      // Lista de términos técnicos que deben preservarse incluso si son cortos
+      const technicalTerms = ['.net', 'c#', 'php', 'ios', 'aws', 'c++', 'sql', 'api', 'ui', 'ux', 'qa', 'js', 'net', 'asp', 'vue', 'go', 'r', 'ml', 'ai', 'iot'];
+      
+      // Caso especial para .NET que puede escribirse de varias formas
+      const normalizedSearch = search.trim().toLowerCase();
+      if (normalizedSearch === '.net' || normalizedSearch === 'dotnet' || normalizedSearch === 'dot net') {
+        // Para .NET, buscar varias formas comunes de escribirlo
+        console.log('Caso especial para .NET detectado');
+        const dotNetTerms = ['.net', 'dotnet', 'dot net', 'asp.net', 'asp net', 'net core', '.net core', 'c#'];
+        whereConditions = [];
+        
+        // Crear condiciones para cada variante de .NET en cada campo
+        searchFields.forEach(({ field }) => {
+          dotNetTerms.forEach(term => {
+            const condition: any = {};
+            condition[field] = Raw(alias => `LOWER(${alias}) LIKE LOWER('%${term.replace(/'/g, "''")}%')`);
+            whereConditions.push(condition);
+          });
+        });
+        
+        console.log('Search terms for .NET:', dotNetTerms);
+        // No hacemos return, continuamos con el flujo normal
       }
+      
+      // Tokenizar la búsqueda para mejorar los resultados
+      const searchTerms = search.trim().split(/\s+/).filter(term => {
+        // Mantener términos técnicos conocidos o términos con longitud > 2
+        return technicalTerms.includes(term.toLowerCase()) || term.length > 2;
+      });
+      console.log('Search terms:', searchTerms);
+      
+      // Si no hay términos válidos después de filtrar, usar el término original completo
+      const termsToUse = searchTerms.length > 0 ? searchTerms : [search.trim()];
+      
+      // Crear condiciones para cada término de búsqueda en cada campo
+      whereConditions = [];
+      
+      // Crear condiciones para cada campo y término
+      termsToUse.forEach(term => {
+        searchFields.forEach(({ field }) => {
+          const condition: any = {};
+          condition[field] = Raw(alias => `LOWER(${alias}) LIKE LOWER('%${term.replace(/'/g, "''")}%')`);
+          whereConditions.push(condition);
+        });
+      });
+    } else {
+      // Si no hay término de búsqueda, usar un objeto vacío
+      whereConditions = {};
+    }
+
+    // Crear un objeto para los filtros adicionales
+    let filterConditions: any = {};
+    
+    // Aplicar filtros si están definidos
+    if (filters) {
+      console.log('Applying filters:', JSON.stringify(filters));
+      this.applyFilters(filterConditions, filters);
+    }
+    
+    // Combinar las condiciones de búsqueda con los filtros
+    let finalWhereConditions: any;
+    
+    if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+      // Si tenemos condiciones de búsqueda en formato de array
+      if (Object.keys(filterConditions).length > 0) {
+        // Combinar búsqueda (OR) con filtros (AND)
+        finalWhereConditions = [
+          ...whereConditions.map(condition => ({ ...condition, ...filterConditions }))
+        ];
+      } else {
+        // Solo usar las condiciones de búsqueda
+        finalWhereConditions = whereConditions;
+      }
+    } else {
+      // Si no hay condiciones de búsqueda o están vacías, usar solo los filtros
+      finalWhereConditions = filterConditions;
+    }
+    
+    console.log('Final where conditions:', JSON.stringify(finalWhereConditions));
+
+    // Configurar opciones de paginación
+    const page = pagination?.page || 1;
+    const limit = pagination?.limit || 40;
+    const skip = (page - 1) * limit;
+
+    // Configurar opciones de ordenamiento
+    const orderOptions: any = {};
+    if (sort) {
+      if (sort.field === 'salary') {
+        orderOptions.salaryMax = sort.direction;
+      } else if (sort.field === 'datePosted') {
+        orderOptions.scrapedAt = sort.direction;
+      } else if (sort.field === 'companyReputation') {
+        orderOptions.companyReputation = sort.direction;
+      } else {
+        // Default ordering if the sort field is not recognized
+        orderOptions.hasSalaryRange = 'DESC';
+        orderOptions.salaryMax = 'DESC';
+      }
+    } else {
+      // Default ordering if no sort options are provided
+      orderOptions.hasSalaryRange = 'DESC';
+      orderOptions.salaryMax = 'DESC';
+    }
+
+    // Obtener el total de registros que coinciden con los criterios
+    const totalCount = await this._jobsRepository.count({
+      where: finalWhereConditions,
+    });
+
+    // Obtener los trabajos con paginación
+    const jobs: Jobs[] = await this._jobsRepository.find({
+      where: finalWhereConditions,
+      skip: skip,
+      take: limit,
+      order: orderOptions,
+      relations: ['platform']
     });
 
     // Se evalúa cada oferta usando nuestro algoritmo MCDA
@@ -261,9 +396,285 @@ export class JobsService {
       like: this.isJobLikedByUser(job, userContext.joblikes),
     }));
 
-    // Se ordenan las ofertas de mayor a menor score
-    scoredJobs = scoredJobs.sort((a, b) => b.score - a.score).slice(0, 40);
-    return scoredJobs;
+    // Ordenar por score si es la opción seleccionada
+    if (sort && sort.field === 'score') {
+      scoredJobs = scoredJobs.sort((a, b) => 
+        sort.direction === 'ASC' ? a.score - b.score : b.score - a.score
+      );
+    }
+
+    // Calcular el número total de páginas
+    const totalPages = Math.ceil(totalCount / limit);
+
+    return {
+      jobs: scoredJobs,
+      total: totalCount,
+      page,
+      totalPages
+    };
+  }
+
+  /**
+   * Aplica los filtros a las condiciones de búsqueda
+   * @param whereConditions Condiciones de búsqueda a modificar
+   * @param filters Filtros a aplicar
+   */
+  /**
+   * Crea una condición SQL segura para búsquedas con LIKE usando el operador Raw
+   * @param terms Array de términos para buscar
+   * @returns Operador Raw con la condición SQL segura
+   */
+  private createSafeLikeCondition(terms: string[]): any {
+    try {
+      if (!terms || terms.length === 0) {
+        return null;
+      }
+      
+      // Escapar comillas simples para evitar inyección SQL
+      const safeTerms = terms.map(term => term.replace(/'/g, "''"));
+      
+      return Raw(alias => 
+        `LOWER(${alias}) LIKE '%${safeTerms[0]}%'` + 
+        safeTerms.slice(1).map(term => ` OR LOWER(${alias}) LIKE '%${term}%'`).join('')
+      );
+    } catch (error) {
+      console.error('Error creating SQL condition:', error);
+      return null;
+    }
+  }
+
+  private applyFilters(whereConditions: any, filters: JobFilters) {
+    // Crear una copia de los filtros originales para debugging
+    const originalFilters = { ...filters };
+    
+    try {
+      // Filtros de salario - Estos son más flexibles ahora
+      if (filters.salaryMin) {
+        // Permitir un margen de 10% por debajo del salario mínimo solicitado
+        const flexibleMin = Math.floor(filters.salaryMin * 0.9);
+        whereConditions.salaryMin = MoreThanOrEqual(flexibleMin);
+        console.log(`Adjusted salaryMin filter from ${filters.salaryMin} to ${flexibleMin}`);
+      }
+      
+      if (filters.salaryMax) {
+        // Permitir un margen de 10% por encima del salario máximo solicitado
+        const flexibleMax = Math.ceil(filters.salaryMax * 1.1);
+        whereConditions.salaryMax = LessThanOrEqual(flexibleMax);
+        console.log(`Adjusted salaryMax filter from ${filters.salaryMax} to ${flexibleMax}`);
+      }
+      
+      // El filtro hasSalaryRange es opcional ahora
+      // Comentamos esta condición para obtener más resultados
+      // if (filters.hasSalaryRange === true) {
+      //   whereConditions.hasSalaryRange = filters.hasSalaryRange;
+      // }
+      console.log('Ignoring hasSalaryRange filter to get more results');
+  
+      // Filtros de ubicación - Búsqueda más flexible
+      if (filters.location) {
+        // Si la ubicación es un array, buscar cualquiera de las ubicaciones
+        if (Array.isArray(filters.location)) {
+          if (filters.location.length > 0) {
+            // Usar la función segura para crear condiciones LIKE
+            const locationTerms = filters.location.map(loc => loc.toLowerCase());
+            const condition = this.createSafeLikeCondition(locationTerms);
+            if (condition) {
+              whereConditions.Location = condition;
+            }
+          }
+        } else {
+          whereConditions.Location = Like(`%${filters.location.toLowerCase()}%`);
+        }
+      }
+  
+      // Filtros de tipo de trabajo - Más flexible con coincidencias parciales
+      if (filters.workType) {
+        // Mapa de posibles variaciones para cada tipo de trabajo
+        const workTypeVariations: Record<string, string[]> = {
+          'Remote': ['remote', 'remoto', 'teletrabajo', 'trabajo remoto', 'home office', 'virtual'],
+          'OnSite': ['onsite', 'on-site', 'on site', 'presencial', 'oficina', 'in office', 'in-office'],
+          'Hybrid': ['hybrid', 'híbrido', 'mixto', 'flexible']
+        };
+        
+        if (Array.isArray(filters.workType)) {
+          // Expandir cada tipo de trabajo a sus variaciones
+          const expandedTypes: string[] = [];
+          filters.workType.forEach(type => {
+            if (type) { // Verificar que el tipo no sea null o undefined
+              const variations = workTypeVariations[type] || [type.toLowerCase()];
+              expandedTypes.push(...variations);
+            }
+          });
+          
+          // Crear condiciones OR para cada variación usando Raw solo si hay tipos expandidos
+          if (expandedTypes.length > 0) {
+            const condition = this.createSafeLikeCondition(expandedTypes);
+            if (condition) {
+              whereConditions.workType = condition;
+            }
+          }
+          console.log('Expanded workType variations:', expandedTypes);
+        } else {
+          const variations = workTypeVariations[filters.workType] || [filters.workType.toLowerCase()];
+          if (variations.length > 1) {
+            const condition = this.createSafeLikeCondition(variations);
+            if (condition) {
+              whereConditions.workType = condition;
+            }
+          } else {
+            whereConditions.workType = Like(`%${variations[0]}%`);
+          }
+          console.log('Expanded workType variations:', variations);
+        }
+      }
+  
+      // Filtros de horario de trabajo - Similar al workType, más flexible
+      if (filters.workScheduleType) {
+        const scheduleVariations: Record<string, string[]> = {
+          'FullTime': ['full time', 'full-time', 'tiempo completo', 'jornada completa', 'tiempo-completo'],
+          'PartTime': ['part time', 'part-time', 'medio tiempo', 'tiempo parcial', 'por horas'],
+          'Contract': ['contract', 'contrato', 'temporal', 'por proyecto'],
+          'Internship': ['internship', 'intern', 'pasantía', 'prácticas', 'trainee']
+        };
+        
+        if (Array.isArray(filters.workScheduleType)) {
+          const expandedTypes: string[] = [];
+          filters.workScheduleType.forEach(type => {
+            if (type) { // Verificar que el tipo no sea null o undefined
+              const variations = scheduleVariations[type] || [type.toLowerCase()];
+              expandedTypes.push(...variations);
+            }
+          });
+          
+          if (expandedTypes.length > 0) {
+            const condition = this.createSafeLikeCondition(expandedTypes);
+            if (condition) {
+              whereConditions.workScheduleType = condition;
+            }
+          }
+        } else {
+          const variations = scheduleVariations[filters.workScheduleType] || [filters.workScheduleType.toLowerCase()];
+          if (variations.length > 1) {
+            const condition = this.createSafeLikeCondition(variations);
+            if (condition) {
+              whereConditions.workScheduleType = condition;
+            }
+          } else if (variations.length === 1) {
+            whereConditions.workScheduleType = Like(`%${variations[0]}%`);
+          }
+        }
+      }
+  
+      // Filtros de nivel de experiencia
+      if (filters.levelExperience) {
+        const experienceVariations: Record<string, string[]> = {
+          'Entry': ['entry', 'entry level', 'junior', 'trainee', 'principiante', 'sin experiencia'],
+          'Junior': ['junior', 'jr', 'jr.', 'entry level', 'principiante'],
+          'Mid': ['mid', 'mid level', 'medio', 'intermedio', 'semi senior', 'semi-senior'],
+          'Senior': ['senior', 'sr', 'sr.', 'expert', 'experto', 'avanzado']
+        };
+        
+        if (Array.isArray(filters.levelExperience)) {
+          const expandedLevels: string[] = [];
+          filters.levelExperience.forEach(level => {
+            if (level) { // Verificar que el nivel no sea null o undefined
+              const variations = experienceVariations[level] || [level.toLowerCase()];
+              expandedLevels.push(...variations);
+            }
+          });
+          
+          if (expandedLevels.length > 0) {
+            const condition = this.createSafeLikeCondition(expandedLevels);
+            if (condition) {
+              whereConditions.levelExperience = condition;
+            }
+          }
+        } else {
+          const variations = experienceVariations[filters.levelExperience] || [filters.levelExperience.toLowerCase()];
+          if (variations.length > 1) {
+            const condition = this.createSafeLikeCondition(variations);
+            if (condition) {
+              whereConditions.levelExperience = condition;
+            }
+          } else if (variations.length === 1) {
+            whereConditions.levelExperience = Like(`%${variations[0]}%`);
+          }
+        }
+      }
+  
+      // Filtros de área o sector - Búsqueda case-insensitive
+      if (filters.area) {
+        if (Array.isArray(filters.area)) {
+          // Filtrar valores null o undefined antes de procesar
+          const validAreas = filters.area.filter(area => area != null);
+          const areas = validAreas.map(area => area.toLowerCase());
+          if (areas.length > 0) {
+            const condition = this.createSafeLikeCondition(areas);
+            if (condition) {
+              whereConditions.area = condition;
+            }
+          }
+        } else if (filters.area) { // Verificar que no sea null o undefined
+          whereConditions.area = Like(`%${filters.area.toLowerCase()}%`);
+        }
+      }
+  
+      // Filtros de reputación de empresa - Hacerlo más flexible
+      if (filters.companyReputation) {
+        // Reducir ligeramente el umbral de reputación para obtener más resultados
+        const flexibleReputation = Math.max(1, filters.companyReputation - 1);
+        whereConditions.companyReputation = MoreThanOrEqual(flexibleReputation);
+        console.log(`Adjusted companyReputation filter from ${filters.companyReputation} to ${flexibleReputation}`);
+      }
+  
+      // Filtros de oportunidades de crecimiento
+      if (filters.hasGrowthOpportunities !== undefined) {
+        whereConditions.hasGrowthOpportunities = filters.hasGrowthOpportunities;
+      }
+  
+      // Filtros de inclusión de discapacidad
+      if (filters.disabilityInclusion !== undefined) {
+        whereConditions.disabilityInclusion = filters.disabilityInclusion;
+      }
+  
+      // Filtros de fecha de publicación - Extender el rango de tiempo
+      if (filters.datePosted) {
+        const now = new Date();
+        let startDate: Date;
+  
+        switch (filters.datePosted) {
+          case 'last24h':
+            startDate = new Date(now.getTime() - 36 * 60 * 60 * 1000); // 36 horas en lugar de 24
+            break;
+          case 'last7d':
+            startDate = new Date(now.getTime() - 10 * 24 * 60 * 60 * 1000); // 10 días en lugar de 7
+            break;
+          case 'last30d':
+            startDate = new Date(now.getTime() - 45 * 24 * 60 * 60 * 1000); // 45 días en lugar de 30
+            break;
+          default:
+            startDate = new Date(now.getTime() - 120 * 24 * 60 * 60 * 1000); // 120 días en lugar de 90
+        }
+  
+        whereConditions.scrapedAt = MoreThanOrEqual(startDate);
+      }
+  
+      // Filtros por empresas específicas - Búsqueda case-insensitive
+      if (filters.companies && Array.isArray(filters.companies) && filters.companies.length > 0) {
+        // Filtrar valores null o undefined antes de procesar
+        const validCompanies = filters.companies.filter(company => company != null);
+        if (validCompanies.length > 0) {
+          const companies = validCompanies.map(company => company.toLowerCase());
+          const condition = this.createSafeLikeCondition(companies);
+          if (condition) {
+            whereConditions.Company = condition;
+          }
+        }
+      }
+    } catch (error) {
+      console.error('Error applying filters:', error);
+      console.error('Original filters:', originalFilters);
+    }
   }
 
   isJobLikedByUser(job: Jobs, jobLikes: JobLikes[]): boolean {
@@ -275,6 +686,31 @@ export class JobsService {
    * Calcula el score MCDA para una oferta de empleo.
    */
   private calculateMCDAScore(job: Jobs, user: User, weights: Weights): number {
+    // Validar y proporcionar valores por defecto para los pesos si no existen
+    const defaultWeights: Weights = {
+      overall: { economic: 0.5, professional: 0.5 },
+      economic: { salary: 0.4, location: 0.3, workType: 0.3 },
+      professional: { relevance: 0.4, company: 0.3, opportunities: 0.3 }
+    };
+
+    // Asegurarse de que todas las propiedades necesarias existan
+    const safeWeights: Weights = {
+      overall: {
+        economic: weights?.overall?.economic ?? defaultWeights.overall.economic,
+        professional: weights?.overall?.professional ?? defaultWeights.overall.professional
+      },
+      economic: {
+        salary: weights?.economic?.salary ?? defaultWeights.economic.salary,
+        location: weights?.economic?.location ?? defaultWeights.economic.location,
+        workType: weights?.economic?.workType ?? defaultWeights.economic.workType
+      },
+      professional: {
+        relevance: weights?.professional?.relevance ?? defaultWeights.professional.relevance,
+        company: weights?.professional?.company ?? defaultWeights.professional.company,
+        opportunities: weights?.professional?.opportunities ?? defaultWeights.professional.opportunities
+      }
+    };
+
     // Criterios de Desarrollo económico
     const salaryScore = this.calculateSalaryScore(
       job.hasSalaryRange,
@@ -289,9 +725,9 @@ export class JobsService {
 
     // Puntuación económica ponderada usando los pesos definidos en weights.economic
     const economicScore =
-      weights.economic.salary * salaryScore +
-      weights.economic.location * locationScore +
-      weights.economic.workType * workTypeScore;
+      safeWeights.economic.salary * salaryScore +
+      safeWeights.economic.location * locationScore +
+      safeWeights.economic.workType * workTypeScore;
 
     // Criterios de Desarrollo profesional
     const relevanceScore = this.calculateTitleRelevance(job.title, user); // B1
@@ -301,19 +737,17 @@ export class JobsService {
 
     // Puntuación profesional ponderada usando los pesos definidos en weights.professional
     const professionalScore =
-      weights.professional.relevance * relevanceScore +
-      weights.professional.company * companyScore +
-      weights.professional.opportunities * opportunitiesScore;
+      safeWeights.professional.relevance * relevanceScore +
+      safeWeights.professional.company * companyScore +
+      safeWeights.professional.opportunities * opportunitiesScore;
 
     // Puntuación final: combinación ponderada usando los pesos globales de cada criterio
     const finalScore =
-      weights.overall.economic * economicScore +
-      weights.overall.professional * professionalScore;
+      safeWeights.overall.economic * economicScore +
+      safeWeights.overall.professional * professionalScore;
 
     return finalScore;
   }
-
-
 
   /**
    * Calcula la relevancia del título del trabajo comparándolo con el historial del usuario.

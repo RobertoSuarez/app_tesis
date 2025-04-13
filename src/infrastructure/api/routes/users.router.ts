@@ -1,5 +1,6 @@
 import { Router } from "express";
 import { UserController } from "../controllers/user.controller";
+import { isAuthenticated } from "../middlewares/auth.middlewares";
 
 export const initUserRoutes = (userController: UserController) => {
     const router = Router();
@@ -9,7 +10,7 @@ export const initUserRoutes = (userController: UserController) => {
 
     // Historial de trabajo.
     router.get('/:uid/work-history', (req, res) => userController.getWorkHistory(req, res));
-    router.post('/:uid/work-history', (req, res) => userController.registerWork(req, res));
+    router.post('/:uid/work-history', isAuthenticated, (req, res) => userController.registerWork(req, res));
 
     // Educacion
     router.get('/:uid/education', (req, res) => userController.getEducation(req, res));

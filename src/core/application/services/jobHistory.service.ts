@@ -30,7 +30,7 @@ export class JobHistoryService {
     async registerWork({ jobTitle, company, end, start, userUID, currentlyWorking }: registerJobHistory) {
         // Primero, buscamos el usuario en la base de datos.
         const userRepository = this._jobHistory.manager.getRepository('User');
-        const user = await userRepository.findOne({ where: { uid: userUID } });
+        const user = await userRepository.findOneBy({ uid: userUID })
         if (!user) {
             throw new Error('Usuario no encontrado');
         }

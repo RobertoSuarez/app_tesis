@@ -51,8 +51,10 @@ export class UserController {
     }
 
     public async registerWork(req: Request, res: Response) {
-        const { uid } = req.params;
+        
         const data = req.body as registerJobHistory;
+        const { user } = req["user"];
+        data.userUID = user.uid;
         const result = await this._jobHistoryService.registerWork(data);
         res.json({
             status: 'success',

@@ -37,7 +37,7 @@ export interface ControllerProvider {
 // aqui vamos a crear el proveedor de controladores
 export const createProvider = async (): Promise<ControllerProvider> => {
 
-    let path = 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe';
+    let path = 'C:\\Program Files\\BraveSoftware\\Brave-Browser\\Application\\brave.exe';
     if (process.platform === 'linux') {
 
         if (config.LOCAL) {
@@ -56,7 +56,7 @@ export const createProvider = async (): Promise<ControllerProvider> => {
     })
     console.log('Config Local: ', config.LOCAL)
     const browser = await puppeteer.launch({
-        headless: false,
+        headless: true,
         executablePath: path,
         args: [
             '--no-sandbox',
