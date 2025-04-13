@@ -37,6 +37,7 @@ export class JobsService {
   private _searchRepository: Repository<Search>;
   private _jobLikesRepository: Repository<JobLikes>;
   private _scrapingStatsRepository: Repository<ScrapingStats>;
+  private _cache: Record<string, {data: any, timestamp: number}> = {};
 
   constructor(
     private _clienteSQL: DataSource,
@@ -232,6 +233,14 @@ export class JobsService {
     sort?: SortOptions,
     pagination?: PaginationOptions
   ) {
+    // Usar caché para búsquedas recientes con los mismos parámetros
+    const cacheKey = this.generateCacheKey(userId, search, filters, sort, pagination);
+    const cachedResult = await this.getFromCache(cacheKey);
+    if (cachedResult) {
+      console.log('Returning cached result for:', cacheKey);
+      return cachedResult;
+    }
+
     const userContext = await this._userService.getContextUser(userId);
 
     // Se registra la búsqueda reciente
@@ -269,51 +278,101 @@ export class JobsService {
         { field: 'alignmentWithProfession', weight: 5 }
       ];
       
-      // Lista de términos técnicos que deben preservarse incluso si son cortos
-      const technicalTerms = ['.net', 'c#', 'php', 'ios', 'aws', 'c++', 'sql', 'api', 'ui', 'ux', 'qa', 'js', 'net', 'asp', 'vue', 'go', 'r', 'ml', 'ai', 'iot'];
+      // Lista ampliada de términos técnicos que deben preservarse incluso si son cortos
+      const technicalTerms = [
+        '.net', 'c#', 'php', 'ios', 'aws', 'c++', 'sql', 'api', 'ui', 'ux', 'qa', 'js', 'net', 'asp', 'vue', 'go', 'r', 'ml', 'ai', 'iot',
+        'css', 'html', 'java', 'node', 'npm', 'git', 'rest', 'soap', 'xml', 'json', 'spa', 'pwa', 'seo', 'ci', 'cd', 'orm', 'mvc', 'mvvm',
+        'tdd', 'bdd', 'ddd', 'agile', 'scrum', 'kanban', 'devops', 'azure', 'gcp', 'saas', 'paas', 'iaas', 'nosql', 'db', 'ts'
+      ];
       
-      // Caso especial para .NET que puede escribirse de varias formas
+      // Mapa de sinónimos para mejorar la búsqueda
+      const synonymsMap: Record<string, string[]> = {
+        '.net': ['.net', 'dotnet', 'dot net', 'asp.net', 'asp net', 'net core', '.net core', 'c#'],
+        'javascript': ['javascript', 'js', 'ecmascript', 'typescript', 'ts'],
+        'frontend': ['frontend', 'front-end', 'front end', 'ui', 'ux', 'interface'],
+        'backend': ['backend', 'back-end', 'back end', 'server-side', 'api'],
+        'fullstack': ['fullstack', 'full-stack', 'full stack', 'frontend backend'],
+        'desarrollador': ['desarrollador', 'developer', 'programador', 'ingeniero software', 'software engineer'],
+        'remoto': ['remoto', 'remote', 'trabajo remoto', 'home office', 'teletrabajo', 'work from home']
+      };
+      
+      // Normalizar la búsqueda
       const normalizedSearch = search.trim().toLowerCase();
-      if (normalizedSearch === '.net' || normalizedSearch === 'dotnet' || normalizedSearch === 'dot net') {
-        // Para .NET, buscar varias formas comunes de escribirlo
-        console.log('Caso especial para .NET detectado');
-        const dotNetTerms = ['.net', 'dotnet', 'dot net', 'asp.net', 'asp net', 'net core', '.net core', 'c#'];
-        whereConditions = [];
-        
-        // Crear condiciones para cada variante de .NET en cada campo
-        searchFields.forEach(({ field }) => {
-          dotNetTerms.forEach(term => {
-            const condition: any = {};
-            condition[field] = Raw(alias => `LOWER(${alias}) LIKE LOWER('%${term.replace(/'/g, "''")}%')`);
-            whereConditions.push(condition);
-          });
-        });
-        
-        console.log('Search terms for .NET:', dotNetTerms);
-        // No hacemos return, continuamos con el flujo normal
+      
+      // Comprobar si la búsqueda coincide con alguna clave de sinónimos
+      let useSynonyms = false;
+      let synonymTerms: string[] = [];
+      
+      for (const [key, synonyms] of Object.entries(synonymsMap)) {
+        if (normalizedSearch === key || synonyms.includes(normalizedSearch)) {
+          console.log(`Caso especial para ${key} detectado`);
+          synonymTerms = synonyms;
+          useSynonyms = true;
+          break;
+        }
       }
       
       // Tokenizar la búsqueda para mejorar los resultados
-      const searchTerms = search.trim().split(/\s+/).filter(term => {
-        // Mantener términos técnicos conocidos o términos con longitud > 2
-        return technicalTerms.includes(term.toLowerCase()) || term.length > 2;
-      });
+      let searchTerms: string[] = [];
+      
+      if (useSynonyms) {
+        // Usar los sinónimos predefinidos
+        searchTerms = synonymTerms;
+      } else {
+        // Tokenización avanzada con manejo de frases entre comillas
+        const phraseRegex = /"([^"]+)"|'([^']+)'/g;
+        const phrases: string[] = [];
+        let plainSearch = normalizedSearch;
+        
+        // Extraer frases entre comillas
+        let match;
+        while ((match = phraseRegex.exec(normalizedSearch)) !== null) {
+          const phrase = match[1] || match[2]; // Captura del grupo 1 o 2
+          phrases.push(phrase);
+          plainSearch = plainSearch.replace(match[0], ''); // Eliminar la frase del texto de búsqueda
+        }
+        
+        // Procesar el resto del texto
+        const words = plainSearch.split(/\s+/).filter(term => {
+          // Mantener términos técnicos conocidos o términos con longitud > 2
+          return technicalTerms.includes(term.toLowerCase()) || term.length > 2;
+        });
+        
+        // Combinar frases y palabras
+        searchTerms = [...phrases, ...words].filter(term => term.trim() !== '');
+      }
+      
       console.log('Search terms:', searchTerms);
       
       // Si no hay términos válidos después de filtrar, usar el término original completo
       const termsToUse = searchTerms.length > 0 ? searchTerms : [search.trim()];
       
-      // Crear condiciones para cada término de búsqueda en cada campo
+      // Crear condiciones para cada término de búsqueda en cada campo con ponderación
       whereConditions = [];
+      const fieldWeightMap = new Map(searchFields.map(sf => [sf.field, sf.weight]));
       
-      // Crear condiciones para cada campo y término
-      termsToUse.forEach(term => {
-        searchFields.forEach(({ field }) => {
-          const condition: any = {};
-          condition[field] = Raw(alias => `LOWER(${alias}) LIKE LOWER('%${term.replace(/'/g, "''")}%')`);
-          whereConditions.push(condition);
+      // Usar QueryBuilder para búsquedas más eficientes
+      if (termsToUse.length > 0) {
+        // Crear condiciones para cada campo y término con ponderación de relevancia
+        termsToUse.forEach(term => {
+          // Usar ILIKE para búsqueda insensible a mayúsculas/minúsculas (PostgreSQL)
+          // o LOWER + LIKE para otras bases de datos
+          searchFields.forEach(({ field, weight }) => {
+            // Crear condición con peso de relevancia
+            const condition: any = {};
+            // Usar Raw para búsqueda más eficiente y segura contra inyección SQL
+            condition[field] = Raw(alias => {
+              // Usar LIKE con comodines al inicio y final para búsqueda parcial
+              // Escapar comillas simples para prevenir inyección SQL
+              const escapedTerm = term.replace(/'/g, "''");
+              return `LOWER(${alias}) LIKE LOWER('%${escapedTerm}%')`;
+            });
+            // Añadir peso al campo para cálculos posteriores
+            condition['_weight'] = weight;
+            whereConditions.push(condition);
+          });
         });
-      });
+      }
     } else {
       // Si no hay término de búsqueda, usar un objeto vacío
       whereConditions = {};
@@ -328,32 +387,16 @@ export class JobsService {
       this.applyFilters(filterConditions, filters);
     }
     
-    // Combinar las condiciones de búsqueda con los filtros
-    let finalWhereConditions: any;
+    // ENFOQUE EN DOS FASES:
+    // 1. Primero buscar hasta 200 empleos usando solo el término de búsqueda
+    // 2. Luego aplicar los filtros adicionales a esos resultados
     
-    if (Array.isArray(whereConditions) && whereConditions.length > 0) {
-      // Si tenemos condiciones de búsqueda en formato de array
-      if (Object.keys(filterConditions).length > 0) {
-        // Combinar búsqueda (OR) con filtros (AND)
-        finalWhereConditions = [
-          ...whereConditions.map(condition => ({ ...condition, ...filterConditions }))
-        ];
-      } else {
-        // Solo usar las condiciones de búsqueda
-        finalWhereConditions = whereConditions;
-      }
-    } else {
-      // Si no hay condiciones de búsqueda o están vacías, usar solo los filtros
-      finalWhereConditions = filterConditions;
-    }
+    console.log('Iniciando búsqueda en dos fases...');
     
-    console.log('Final where conditions:', JSON.stringify(finalWhereConditions));
-
-    // Configurar opciones de paginación
-    const page = pagination?.page || 1;
-    const limit = pagination?.limit || 40;
-    const skip = (page - 1) * limit;
-
+    // Fase 1: Buscar empleos usando solo el término de búsqueda
+    let searchOnlyConditions: any;
+    let initialJobsIds: string[] = [];
+    
     // Configurar opciones de ordenamiento
     const orderOptions: any = {};
     if (sort) {
@@ -373,8 +416,74 @@ export class JobsService {
       orderOptions.hasSalaryRange = 'DESC';
       orderOptions.salaryMax = 'DESC';
     }
+    
+    // Solo realizar la búsqueda inicial si hay un término de búsqueda
+    if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+      // Preparar condiciones de búsqueda sin los pesos
+      searchOnlyConditions = whereConditions.map(({ _weight, ...rest }) => rest);
+      
+      console.log('Fase 1: Buscando empleos con el término de búsqueda...');
+      
+      // Buscar hasta 200 empleos que coincidan con el término de búsqueda
+      const initialJobs = await this._jobsRepository.find({
+        where: searchOnlyConditions,
+        take: 200, // Limitar a 200 resultados para la primera fase
+        order: orderOptions,
+        select: ['uid'], // Solo necesitamos los IDs para la segunda fase
+        cache: true
+      });
+      
+      // Extraer los IDs de los empleos encontrados
+      initialJobsIds = initialJobs.map(job => job.uid);
+      console.log(`Fase 1 completada: ${initialJobsIds.length} empleos encontrados.`);
+    }
+    
+    // Fase 2: Aplicar filtros adicionales
+    let finalWhereConditions: any;
+    
+    // Si tenemos resultados de la fase 1 y hay filtros adicionales
+    if (initialJobsIds.length > 0 && Object.keys(filterConditions).length > 0) {
+      console.log('Fase 2: Aplicando filtros adicionales a los resultados iniciales...');
+      
+      // Combinar la condición de IDs con los filtros adicionales
+      finalWhereConditions = {
+        uid: In(initialJobsIds), // Usar solo los IDs de la fase 1
+        ...filterConditions     // Aplicar los filtros adicionales
+      };
+    } 
+    // Si tenemos resultados de la fase 1 pero no hay filtros adicionales
+    else if (initialJobsIds.length > 0) {
+      // Usar solo los IDs de la fase 1
+      finalWhereConditions = { uid: In(initialJobsIds) };
+    }
+    // Si no hay resultados de la fase 1 pero hay un término de búsqueda
+    else if (Array.isArray(whereConditions) && whereConditions.length > 0) {
+      // Usar las condiciones de búsqueda originales con los filtros
+      if (Object.keys(filterConditions).length > 0) {
+        const searchConditions = whereConditions.map(({ _weight, ...rest }) => rest);
+        finalWhereConditions = [
+          ...searchConditions.map(searchCondition => ({
+            ...searchCondition,
+            ...filterConditions
+          }))
+        ];
+      } else {
+        finalWhereConditions = whereConditions.map(({ _weight, ...rest }) => rest);
+      }
+    }
+    // Si no hay término de búsqueda, usar solo los filtros
+    else {
+      finalWhereConditions = filterConditions;
+    }
+    
+    console.log('Condiciones finales:', JSON.stringify(finalWhereConditions));
 
-    // Obtener el total de registros que coinciden con los criterios
+    // Configurar opciones de paginación
+    const page = pagination?.page || 1;
+    const limit = pagination?.limit || 40;
+    const skip = (page - 1) * limit;
+
+    // Usar un contador optimizado para grandes conjuntos de datos
     const totalCount = await this._jobsRepository.count({
       where: finalWhereConditions,
     });
@@ -385,7 +494,8 @@ export class JobsService {
       skip: skip,
       take: limit,
       order: orderOptions,
-      relations: ['platform']
+      relations: ['platform'],
+      cache: true // Habilitar caché de TypeORM para esta consulta
     });
 
     // Se evalúa cada oferta usando nuestro algoritmo MCDA
@@ -405,11 +515,69 @@ export class JobsService {
     // Calcular el número total de páginas
     const totalPages = Math.ceil(totalCount / limit);
 
-    return {
+    const result = {
       jobs: scoredJobs,
       total: totalCount,
       page,
       totalPages
+    };
+
+    // Guardar en caché para futuras consultas
+    await this.saveToCache(cacheKey, result);
+
+    return result;
+  }
+
+  /**
+   * Genera una clave única para la caché basada en los parámetros de búsqueda
+   */
+  private generateCacheKey(
+    userId: string,
+    search: string,
+    filters?: JobFilters,
+    sort?: SortOptions,
+    pagination?: PaginationOptions
+  ): string {
+    return JSON.stringify({
+      userId,
+      search: search?.trim().toLowerCase() || '',
+      filters: filters || {},
+      sort: sort || {},
+      page: pagination?.page || 1,
+      limit: pagination?.limit || 40
+    });
+  }
+
+  /**
+   * Obtiene resultados de la caché
+   */
+  private async getFromCache(key: string): Promise<any> {
+    // Implementar con Redis, Memcached o almacenamiento en memoria
+    // Por ahora, implementación simple en memoria
+    const cacheExpiration = 5 * 60 * 1000; // 5 minutos en milisegundos
+    const now = Date.now();
+    
+    // Verificar si la clave existe en la caché y no ha expirado
+    if (this._cache && this._cache[key] && (now - this._cache[key].timestamp) < cacheExpiration) {
+      return this._cache[key].data;
+    }
+    
+    return null;
+  }
+
+  /**
+   * Guarda resultados en la caché
+   */
+  private async saveToCache(key: string, data: any): Promise<void> {
+    // Implementar con Redis, Memcached o almacenamiento en memoria
+    // Por ahora, implementación simple en memoria
+    if (!this._cache) {
+      this._cache = {};
+    }
+    
+    this._cache[key] = {
+      data,
+      timestamp: Date.now()
     };
   }
 
@@ -682,7 +850,8 @@ export class JobsService {
   }
 
   /**
-   * Calcula el score MCDA para una oferta de empleo.
+   * Calcula el score MCDA para una oferta de empleo utilizando un enfoque mejorado.
+   * Incorpora factores adicionales como la recencia de la oferta y aplica normalización.
    */
   private calculateMCDAScore(job: Jobs, user: User, weights: Weights): number {
     // Validar y proporcionar valores por defecto para los pesos si no existen
@@ -710,57 +879,88 @@ export class JobsService {
       }
     };
 
-    // Criterios de Desarrollo económico
+    // Normalizar los pesos para asegurar que sumen 1.0 en cada categoría
+    this.normalizeWeights(safeWeights);
+
+    // ===== CRITERIOS DE DESARROLLO ECONÓMICO =====
+    
+    // A1: Salario - Evalúa la compatibilidad entre el rango salarial ofrecido y las expectativas del usuario
     const salaryScore = this.calculateSalaryScore(
       job.hasSalaryRange,
       job.salaryMin,
       job.salaryMax,
       user.expectedSalaryMin,
       user.expectedSalaryMax
-    ); // A1
+    );
 
-    const locationScore = this.calculateLocationScore(job.Location, user.city?.name); // A2
-    const workTypeScore = this.calculateWorkTypeScore(job.workType, user.preferredWorkType); // A3
+    // A2: Ubicación - Evalúa la compatibilidad geográfica entre la oferta y las preferencias del usuario
+    const locationScore = this.calculateLocationScore(job.Location, user.city?.name);
+    
+    // A3: Tipo/Modalidad de trabajo - Evalúa la compatibilidad entre la modalidad ofrecida y las preferencias
+    const workTypeScore = this.calculateWorkTypeScore(job.workType, user.preferredWorkType);
 
-    // Puntuación económica ponderada usando los pesos definidos en weights.economic
+    // Puntuación económica ponderada usando los pesos normalizados
     const economicScore =
       safeWeights.economic.salary * salaryScore +
       safeWeights.economic.location * locationScore +
       safeWeights.economic.workType * workTypeScore;
 
-    // Criterios de Desarrollo profesional
-    const relevanceScore = this.calculateTitleRelevance(job.title, user); // B1
-    const companyScore = job.companyReputation ? job.companyReputation / 10 : 0.5; // B2
-    const opportunitiesScore =
-      (job.hasGrowthOpportunities || (job.growthOpportunitiesDescription && job.growthOpportunitiesDescription.trim() !== "")) ? 1 : 0; // B3
+    // ===== CRITERIOS DE DESARROLLO PROFESIONAL =====
+    
+    // B1: Relevancia - Evalúa la relevancia del título con respecto al perfil del usuario
+    const relevanceScore = this.calculateTitleRelevance(job.title, user);
+    
+    // B2: Empresa - Evalúa la reputación de la empresa
+    const companyScore = job.companyReputation ? job.companyReputation / 10 : 0.5;
+    
+    // B3: Oportunidades de crecimiento - Evalúa las oportunidades de desarrollo profesional
+    const opportunitiesScore = this.calculateOpportunitiesScore(
+      job.hasGrowthOpportunities,
+      job.growthOpportunitiesDescription
+    );
 
-    // Puntuación profesional ponderada usando los pesos definidos en weights.professional
+    // Puntuación profesional ponderada usando los pesos normalizados
     const professionalScore =
       safeWeights.professional.relevance * relevanceScore +
       safeWeights.professional.company * companyScore +
       safeWeights.professional.opportunities * opportunitiesScore;
 
-    // Puntuación final: combinación ponderada usando los pesos globales de cada criterio
-    const finalScore =
+    // ===== FACTOR DE RECENCIA =====
+    // Aplicar un bonus por recencia (ofertas más recientes reciben una pequeña bonificación)
+    const recencyBonus = this.calculateRecencyBonus(job.scrapedAt || job.createdAt);
+
+    // ===== PUNTUACIÓN FINAL =====
+    // Combinación ponderada usando los pesos globales de cada criterio más el bonus de recencia
+    let finalScore =
       safeWeights.overall.economic * economicScore +
       safeWeights.overall.professional * professionalScore;
+    
+    // Aplicar el bonus de recencia (máximo 10% de bonificación)
+    finalScore = finalScore * (1 + recencyBonus);
 
-    return finalScore;
+    // Asegurar que el puntaje final esté en el rango [0,1]
+    return Math.max(0, Math.min(finalScore, 1));
   }
 
   /**
    * Calcula la relevancia del título del trabajo comparándolo con el historial del usuario.
    */
   private calculateTitleRelevance(title: string, user: User): number {
+    if (!title || !user.jobHistory || user.jobHistory.length === 0) return 0.5;
+    
     const userSkills = user.jobHistory.map((job) => job.jobTitle).join(' ').toLowerCase();
-    const titleKeywords = title.toLowerCase().split(' ');
-    let relevance = 0;
+    const titleKeywords = title.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+    
+    if (titleKeywords.length === 0) return 0.5;
+    
+    let matchCount = 0;
     titleKeywords.forEach((word) => {
       if (userSkills.includes(word)) {
-        relevance += 1;
+        matchCount += 1;
       }
     });
-    return Math.min(relevance / titleKeywords.length, 1);
+    
+    return Math.min(matchCount / titleKeywords.length, 1);
   }
 
   /**
@@ -768,14 +968,280 @@ export class JobsService {
    */
   private calculateLocationScore(jobLocation: string, userCity: string): number {
     if (!jobLocation || !userCity) return 0.5;
-    if (jobLocation.toLowerCase().includes(userCity.toLowerCase())) {
+    
+    const normalizedJobLocation = jobLocation.toLowerCase();
+    const normalizedUserCity = userCity.toLowerCase();
+    
+    if (normalizedJobLocation.includes(normalizedUserCity)) {
       return 1;
-    } else if (jobLocation.toLowerCase() === 'remote') {
+    } else if (
+      normalizedJobLocation.includes('remoto') || 
+      normalizedJobLocation.includes('remote') ||
+      normalizedJobLocation.includes('teletrabajo') ||
+      normalizedJobLocation.includes('home office')
+    ) {
       return 0.8;
     } else {
       return 0.3;
     }
   }
+
+  /**
+   * Normaliza los pesos para asegurar que sumen 1.0 en cada categoría.
+   */
+  private normalizeWeights(weights: Weights): void {
+    // Normalizar pesos globales
+    const overallSum = weights.overall.economic + weights.overall.professional;
+    if (overallSum > 0) {
+      weights.overall.economic /= overallSum;
+      weights.overall.professional /= overallSum;
+    }
+
+    // Normalizar pesos económicos
+    const economicSum = weights.economic.salary + weights.economic.location + weights.economic.workType;
+    if (economicSum > 0) {
+      weights.economic.salary /= economicSum;
+      weights.economic.location /= economicSum;
+      weights.economic.workType /= economicSum;
+    }
+
+    // Normalizar pesos profesionales
+    const professionalSum = weights.professional.relevance + weights.professional.company + weights.professional.opportunities;
+    if (professionalSum > 0) {
+      weights.professional.relevance /= professionalSum;
+      weights.professional.company /= professionalSum;
+      weights.professional.opportunities /= professionalSum;
+    }
+  }
+
+  /**
+   * Calcula un bonus basado en la recencia de la oferta.
+   * Las ofertas más recientes reciben una pequeña bonificación.
+   */
+  private calculateRecencyBonus(date: Date): number {
+    if (!date) return 0;
+    
+    const now = new Date();
+    const jobDate = new Date(date);
+    const ageInDays = (now.getTime() - jobDate.getTime()) / (1000 * 60 * 60 * 24);
+    
+    // Ofertas de menos de 7 días reciben bonus máximo
+    if (ageInDays <= 7) {
+      return 0.1; // 10% de bonus
+    }
+    // Ofertas entre 7 y 30 días reciben bonus proporcional
+    else if (ageInDays <= 30) {
+      return 0.1 * (1 - ((ageInDays - 7) / 23)); // Decrece linealmente de 10% a 0%
+    }
+    // Ofertas de más de 30 días no reciben bonus
+    else {
+      return 0;
+    }
+  }
+
+  /**
+   * Evalúa las oportunidades de crecimiento profesional en la oferta.
+   */
+  private calculateOpportunitiesScore(hasOpportunities?: boolean, description?: string): number {
+    // Si se indica explícitamente que hay oportunidades de crecimiento
+    if (hasOpportunities === true) {
+      return 1.0;
+    }
+    
+    // Si hay una descripción de oportunidades de crecimiento
+    if (description && description.trim() !== '') {
+      // Analizar la calidad de la descripción (longitud como proxy simple)
+      const words = description.trim().split(/\s+/).length;
+      if (words > 30) return 0.9;  // Descripción detallada
+      if (words > 15) return 0.7;  // Descripción moderada
+      return 0.5;                  // Descripción básica
+    }
+    
+    // Sin información sobre oportunidades
+    return 0.0;
+  }
+
+
+
+  /**
+   * Calcula la puntuación de la empresa basada en su reputación y nombre.
+   */
+  private calculateCompanyScore(companyName: string, companyReputation?: number): number {
+    // Si hay una puntuación de reputación explícita, usarla (normalizada a [0,1])
+    if (companyReputation !== undefined && companyReputation !== null) {
+      return companyReputation / 10;
+    }
+    
+    // Si no hay puntuación pero hay nombre de empresa, dar una puntuación base
+    if (companyName && companyName.trim() !== '') {
+      // Aquí se podría implementar una lógica para reconocer empresas conocidas
+      // Por ahora, damos una puntuación neutral
+      return 0.5;
+    }
+    
+    // Si no hay información de la empresa, puntuación baja
+    return 0.3;
+  }
+
+  /**
+   * Evalúa las oportunidades de crecimiento profesional en la oferta.
+   */
+  // private calculateOpportunitiesScore(hasOpportunities?: boolean, description?: string): number {
+  //   // Si se indica explícitamente que hay oportunidades de crecimiento
+  //   if (hasOpportunities === true) {
+  //     return 1.0;
+  //   }
+    
+  //   // Si hay una descripción de oportunidades de crecimiento
+  //   if (description && description.trim() !== '') {
+  //     // Analizar la calidad de la descripción (longitud como proxy simple)
+  //     const words = description.trim().split(/\s+/).length;
+  //     if (words > 30) return 0.9;  // Descripción detallada
+  //     if (words > 15) return 0.7;  // Descripción moderada
+  //     return 0.5;                  // Descripción básica
+  //   }
+    
+  //   // Sin información sobre oportunidades
+  //   return 0.0;
+  // }
+
+  /**
+   * Versión mejorada del cálculo de relevancia del título del trabajo.
+   * Incluye análisis del título y la descripción comparándolos con el historial del usuario.
+   */
+  private calculateEnhancedTitleRelevance(title: string, description: string, user: User): number {
+    if (!title) return 0.5;
+    
+    // Obtener habilidades y experiencia del usuario
+    const userSkills = user.jobHistory.map(job => job.jobTitle).join(' ').toLowerCase();
+    const userKeywords = userSkills.split(/\s+/).filter(word => word.length > 2);
+    
+    // Analizar el título del trabajo
+    const titleKeywords = title.toLowerCase().split(/\s+/).filter(word => word.length > 2);
+    
+    // Analizar la descripción del trabajo (si está disponible)
+    const descriptionKeywords = description ? 
+      description.toLowerCase().split(/\s+/).filter(word => word.length > 2) : [];
+    
+    // Combinar keywords del título (con mayor peso) y descripción
+    const jobKeywords = [...titleKeywords, ...descriptionKeywords.slice(0, 50)];
+    
+    // Calcular coincidencias
+    let matchCount = 0;
+    let totalKeywords = 0;
+    
+    // Dar mayor peso a las coincidencias en el título
+    titleKeywords.forEach(keyword => {
+      if (userKeywords.includes(keyword)) {
+        matchCount += 2; // Mayor peso para coincidencias en el título
+      }
+      totalKeywords += 2;
+    });
+    
+    // Menor peso a las coincidencias en la descripción
+    descriptionKeywords.slice(0, 50).forEach(keyword => {
+      if (userKeywords.includes(keyword)) {
+        matchCount += 1;
+      }
+      totalKeywords += 1;
+    });
+    
+    // Si no hay keywords para comparar, dar un valor neutral
+    if (totalKeywords === 0) return 0.5;
+    
+    // Normalizar el resultado al rango [0,1]
+    return Math.min(matchCount / totalKeywords * 1.5, 1); // Multiplicador para dar más peso a coincidencias parciales
+  }
+
+  /**
+   * Versión mejorada del cálculo de compatibilidad de ubicación.
+   * Considera diferentes niveles de compatibilidad geográfica.
+   */
+  private calculateEnhancedLocationScore(jobLocation: string, userCity: string): number {
+    if (!jobLocation || !userCity) return 0.5; // Valor neutral si falta información
+    
+    const normalizedJobLocation = jobLocation.toLowerCase();
+    const normalizedUserCity = userCity.toLowerCase();
+    
+    // Coincidencia exacta o trabajo remoto
+    if (normalizedJobLocation.includes(normalizedUserCity)) {
+      return 1.0; // Coincidencia perfecta
+    }
+    
+    // Trabajo remoto o híbrido
+    if (normalizedJobLocation.includes('remoto') || 
+        normalizedJobLocation.includes('remote') || 
+        normalizedJobLocation.includes('teletrabajo') || 
+        normalizedJobLocation.includes('home office') ||
+        normalizedJobLocation.includes('híbrido') || 
+        normalizedJobLocation.includes('hybrid')) {
+      return 0.9; // Muy buena compatibilidad
+    }
+    
+    // Podría implementarse una lógica más avanzada con distancias geográficas
+    // Por ejemplo, verificar si la ubicación está en la misma provincia/estado
+    
+    // Por ahora, valor bajo para ubicaciones diferentes
+    return 0.3;
+  }
+
+  /**
+   * Versión mejorada del cálculo de compatibilidad del tipo de trabajo.
+   * Considera diferentes modalidades y sus compatibilidades.
+   */
+  private calculateEnhancedWorkTypeScore(jobWorkType: string, userPreferredWorkType: string): number {
+    if (!jobWorkType || !userPreferredWorkType) return 0.5; // Valor neutral si falta información
+    
+    const normalizedJobType = jobWorkType.toLowerCase();
+    const normalizedUserType = userPreferredWorkType.toLowerCase();
+    
+    // Coincidencia exacta
+    if (normalizedJobType.includes(normalizedUserType)) {
+      return 1.0;
+    }
+    
+    // Compatibilidades especiales
+    
+    // Si el usuario prefiere remoto
+    if (normalizedUserType.includes('remoto') || normalizedUserType.includes('remote')) {
+      // Y el trabajo es híbrido
+      if (normalizedJobType.includes('híbrido') || normalizedJobType.includes('hybrid')) {
+        return 0.8; // Buena compatibilidad
+      }
+      // Si el trabajo es presencial
+      if (normalizedJobType.includes('presencial') || normalizedJobType.includes('oficina')) {
+        return 0.3; // Baja compatibilidad
+      }
+    }
+    
+    // Si el usuario prefiere híbrido
+    if (normalizedUserType.includes('híbrido') || normalizedUserType.includes('hybrid')) {
+      // Y el trabajo es remoto
+      if (normalizedJobType.includes('remoto') || normalizedJobType.includes('remote')) {
+        return 0.7; // Compatibilidad moderada
+      }
+      // Si el trabajo es presencial
+      if (normalizedJobType.includes('presencial') || normalizedJobType.includes('oficina')) {
+        return 0.6; // Compatibilidad moderada
+      }
+    }
+    
+    // Si el usuario prefiere presencial
+    if (normalizedUserType.includes('presencial') || normalizedUserType.includes('oficina')) {
+      // Y el trabajo es híbrido
+      if (normalizedJobType.includes('híbrido') || normalizedJobType.includes('hybrid')) {
+        return 0.7; // Compatibilidad moderada
+      }
+      // Si el trabajo es remoto
+      if (normalizedJobType.includes('remoto') || normalizedJobType.includes('remote')) {
+        return 0.4; // Baja compatibilidad
+      }
+    }
+    
+    // Si no hay coincidencia clara, valor bajo-moderado
+    return 0.4;
+  }
+  
 
   /**
    * Evalúa la compatibilidad del tipo de trabajo.

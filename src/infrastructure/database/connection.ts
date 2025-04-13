@@ -41,7 +41,6 @@ export class ConnectionDB {
                 Education,
                 Industry,
                 Province,
-                User,
                 JobHistory,
                 Languages,
                 JobLikes,
