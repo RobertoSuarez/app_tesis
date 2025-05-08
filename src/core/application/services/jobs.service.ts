@@ -10,6 +10,7 @@ import { config } from "../../../shared/config/config";
 import { JobLikes } from "../../domain/entities/jobLikes.entity";
 import { JobLikesService } from "./JobLikes.service";
 import { ScrapingStats } from "../../domain/entities/scraping-stats.entity";
+import { NotificationsService } from "./notifications.service";
 
 export interface Weights {
   // Pesos globales para cada grupo (la suma debe ser 1 o 100%, según convenga)
@@ -37,6 +38,7 @@ export class JobsService {
   private _searchRepository: Repository<Search>;
   private _jobLikesRepository: Repository<JobLikes>;
   private _scrapingStatsRepository: Repository<ScrapingStats>;
+  private _notificationsService: NotificationsService;
   private _cache: Record<string, {data: any, timestamp: number}> = {};
 
   constructor(
@@ -50,6 +52,7 @@ export class JobsService {
     this._searchRepository = this._clienteSQL.getRepository(Search);
     this._jobLikesRepository = this._clienteSQL.getRepository(JobLikes);
     this._scrapingStatsRepository = this._clienteSQL.getRepository(ScrapingStats);
+    this._notificationsService = new NotificationsService(_clienteSQL);
   }
 
   async test(query: string): Promise<void> {
@@ -171,7 +174,38 @@ export class JobsService {
                 continue;
             }
             if (!job || !job.title) continue;
-            await this._jobsRepository.save(job);
+            const savedJob = await this._jobsRepository.save(job);
+            
+            // Notificar a los usuarios sobre el nuevo trabajo
+            try {
+              // Obtener usuarios que podrían estar interesados en este trabajo
+              // Por ejemplo, usuarios que han buscado términos relacionados
+              const recentSearches = await this._searchRepository.find({
+                where: {},
+                relations: ['user'],
+                order: { createdAt: 'DESC' },
+                take: 20
+              });
+              
+              // Crear un conjunto para evitar notificaciones duplicadas
+              const notifiedUsers = new Set<string>();
+              
+              for (const search of recentSearches) {
+                if (search.user && search.user.uid && !notifiedUsers.has(search.user.uid)) {
+                  // Registrar notificación para el usuario
+                  await this._notificationsService.registerNotifications({
+                    userUID: search.user.uid,
+                    title: 'Nuevo trabajo disponible',
+                    body: `Se ha publicado un nuevo trabajo: ${savedJob.title} en ${savedJob.Company || 'una empresa'}. ¡Revísalo ahora!`
+                  });
+                  
+                  // Marcar usuario como notificado
+                  notifiedUsers.add(search.user.uid);
+                }
+              }
+            } catch (error) {
+              console.error('Error al enviar notificaciones de nuevo trabajo:', error);
+            }
           } catch (err) {
             console.error(`Error procesando URL: ${err.message}`);
             // Incrementar contador de fallos según la plataforma

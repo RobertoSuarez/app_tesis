@@ -7,8 +7,7 @@ import { JobHistory } from "../../domain/entities/jobHistory.entity";
 import { config } from "../../../shared/config/config";
 import { City } from "../../domain/entities/city.entity";
 import { Province } from "../../domain/entities/province.entity";
-
-
+import { NotificationsService } from "./notifications.service";
 
 export class UserService {
 
@@ -16,20 +15,20 @@ export class UserService {
     private _cityRepository: Repository<City>;
     private _jobHistory: Repository<JobHistory>;
     private _provinceRepository: Repository<Province>;
-
+    private _notificationsService: NotificationsService;
 
     constructor(client: DataSource) {
         this._usersRepository = client.getRepository(User);
         this._jobHistory = client.getRepository(JobHistory);
         this._cityRepository = client.getRepository(City);
         this._provinceRepository = client.getRepository(Province);
+        this._notificationsService = new NotificationsService(client);
     }
 
     async sendVerificationEmail(user: User) {
         const token = sign({ uid: user.uid }, config.KEY_JWT, { expiresIn: '1h' });
         const verificationLink = `${config.FRONTEND_URL}/verify-email?token=${token}`;
         const verificationLinkLocal = `${config.FRONTEND_URL_LOCAL}/verify-email?token=${token}`;
-
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -42,17 +41,16 @@ export class UserService {
             },
         });
 
-
         const mailOptions = {
             from: '"Tu App" <no-reply@tuapp.com>',
             to: user.email,
             subject: 'Verifica tu correo electrónico',
             text: `Hola ${user.firstName},
-        
+
         Para confirmar tu cuenta, por favor haz clic en el siguiente enlace:
         ${verificationLink}
         ${verificationLinkLocal}
-        
+
         Si no solicitaste esta cuenta, ignora este mensaje.`,
             html: `<p>Hola ${user.firstName},</p>
                    <p>Para confirmar tu cuenta, por favor haz clic en el siguiente enlace:</p>
@@ -81,6 +79,13 @@ export class UserService {
             throw new Error('Email not confirmed');
         }
 
+        // Registrar notificación de inicio de sesión
+        await this._notificationsService.registerNotifications({
+            userUID: user.uid,
+            title: 'Inicio de sesión',
+            body: `Has iniciado sesión el ${new Date().toLocaleString()}`
+        });
+
         user.password = undefined;
 
         var token = sign({ user }, config.KEY_JWT, { expiresIn: '1h' });
@@ -101,6 +106,13 @@ export class UserService {
             throw new Error('User not found');
         }
 
+        // Registrar notificación de inicio de sesión
+        await this._notificationsService.registerNotifications({
+            userUID: user.uid,
+            title: 'Inicio de sesión',
+            body: `Has iniciado sesión el ${new Date().toLocaleString()}`
+        });
+
         user.password = undefined;
 
         var token = sign({ user }, config.KEY_JWT, { expiresIn: '1h' });
@@ -117,6 +129,13 @@ export class UserService {
                 role: 'user-normal',
                 emailConfirmed: false,
                 disability: false,
+            });
+
+            // Registrar notificación de registro de usuario
+            await this._notificationsService.registerNotifications({
+                userUID: user.uid,
+                title: 'Bienvenido',
+                body: `¡Bienvenido a la plataforma! Tu cuenta ha sido creada exitosamente. Por favor, verifica tu correo electrónico para activar tu cuenta.`
             });
 
             await this.sendVerificationEmail(user);
