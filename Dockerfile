@@ -1,34 +1,68 @@
-# Etapa de compilación
-FROM node:20.15.0-alpine as builder
+# Etapa de dependencias
+FROM node:20.18.0-alpine AS deps
 WORKDIR /app
+
+# Instalar solo las dependencias de producción para reducir el tamaño
 COPY package*.json ./
-RUN npm install
-COPY . . 
-RUN npm run build 
+RUN npm ci --only=production --omit=dev
 
-# Etapa de producción
-FROM node:alpine as production
+# Etapa de compilación
+FROM node:20.18.0-alpine AS builder
 WORKDIR /app
 
-# Instalar Chromium y sus dependencias necesarias
+# Copiar archivos de dependencias para aprovechar la caché de capas
+COPY package*.json ./
+COPY tsconfig*.json ./
+
+# Instalar todas las dependencias (incluyendo devDependencies)
+RUN npm ci
+
+# Copiar el código fuente
+COPY src/ ./src/
+
+# Compilar la aplicación
+RUN npm run build
+
+# Etapa de producción - imagen final optimizada
+FROM node:20.18.0-alpine AS production
+WORKDIR /app
+
+# Configurar variables de entorno
+ENV NODE_ENV=production
+ENV PORT=9000
+
+# Instalar Chromium y sus dependencias necesarias (optimizado)
 RUN apk add --no-cache \
       chromium \
       nss \
       freetype \
-      harfbuzz \
       ca-certificates \
-      ttf-freefont
+      ttf-freefont \
+      && rm -rf /var/cache/apk/*
 
-# Definir la ruta del ejecutable de Chromium para Puppeteer
+# Configurar Puppeteer para usar Chromium instalado
 ENV PUPPETEER_EXECUTABLE_PATH=/usr/bin/chromium
-ENV NODE_ENV=production
+ENV PUPPETEER_SKIP_CHROMIUM_DOWNLOAD=true
 
-COPY --from=builder /app/node_modules ./node_modules
-COPY package*.json ./
+# Crear un usuario no root para mejorar la seguridad
+RUN addgroup -S appgroup && adduser -S appuser -G appgroup
+
+# Copiar solo los archivos necesarios para producción
+COPY --from=deps /app/node_modules ./node_modules
 COPY --from=builder /app/dist ./dist
+COPY package.json ./
+
+# Cambiar la propiedad de los archivos al usuario no root
+RUN chown -R appuser:appgroup /app
+
+# Cambiar al usuario no root
+USER appuser
 
 # Exponer el puerto
-EXPOSE 3000
+EXPOSE 9000
+
+# Verificar la salud de la aplicación
+HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 CMD wget --no-verbose --tries=1 --spider http://localhost:9000/api/health || exit 1
 
 # Comando para iniciar la aplicación
-CMD [ "node", "dist/index.js" ]
+CMD ["node", "dist/index.js"]

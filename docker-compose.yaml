@@ -6,8 +6,21 @@ services:
       context: .
       dockerfile: Dockerfile
     ports:
-      - 3000:3000
+      - 9000:9000
     environment:
-      - APP_PORT=${APP_PORT}
+      - PORT=${PORT:-9000}
       - DATABASE_URL=${DATABASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - LINKEDIN_USERNAME=${LINKEDIN_USERNAME}
+      - LINKEDIN_PASSWORD=${LINKEDIN_PASSWORD}
+      - GCP_KEY=${GCP_KEY}
+      - SEARCH_ENGINE_ID=${SEARCH_ENGINE_ID}
+      - KEY_JWT=${KEY_JWT}
+      - FRONTEND_URL_LOCAL=${FRONTEND_URL_LOCAL}
+      - FRONTEND_URL=${FRONTEND_URL}
+      - EMAIL=${EMAIL}
+      - PASSWORD_EMAIL=${PASSWORD_EMAIL}
+      - BROWSER_CLOSE=${BROWSER_CLOSE:-false}
+      - LOCAL=${LOCAL:-true}
+    env_file:
+      - .env
